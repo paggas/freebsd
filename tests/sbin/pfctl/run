@@ -1,0 +1,27 @@
+#! /usr/bin/env atf-sh
+
+pfctl_bin=/usr/obj/usr/src/sbin/pfctl/pfctl
+
+atf_test_case mini
+mini_head () { atf_set descr 'Minimal ruleset test.' ; }
+mini_body () {
+    ( echo 'block in all'
+      echo 'pass out all keep state' ) |
+      	   atf_check "$pfctl_bin" -nf - ; }
+
+atf_test_case binat
+binat_head () { atf_set descr 'Binat-from-any bug.' ; }
+binat_body () {
+    ( echo 'binat on em1 inet6 from fc00::/64 to any -> fc00:0:0:1::/64'
+      echo 'binat on em1 inet6 from any to fc00:0:0:1::/64 -> fc00::/64' ) |
+	atf_check "$pfctl_bin" -nf - ; }
+
+atf_test_case timeout
+timeout_head () { atf_set descr 'Set-timeout-interval bug.' ; }
+timeout_body () {
+    echo 'set timeout interval 10' |
+	atf_check "$pfctl_bin" -nf - ; }
+
+atf_init_test_cases () { atf_add_test_case mini
+			 atf_add_test_case binat
+			 atf_add_test_case timeout ; }
