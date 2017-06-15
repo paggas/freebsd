@@ -2,26 +2,21 @@
 
 pfctl_bin=/usr/obj/usr/src/sbin/pfctl/pfctl
 
-atf_test_case mini
-mini_head () { atf_set descr 'Minimal ruleset test.' ; }
-mini_body () {
-    ( echo 'block in all'
-      echo 'pass out all keep state' ) |
-      	   atf_check "$pfctl_bin" -nf - ; }
+pftests="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015
+016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032
+034 035 036 038 039 040 041 044 046 047 048 049 050 052 053 054 055
+056 057 060 061 065 066 067 068 069 070 071 072 073 074 075 076 077
+078 079 080 081 082 083 084 085 086 087 088 089 090 091 092 093 094
+095 096 097 098 099 100 101 102 103 104"
 
-atf_test_case binat
-binat_head () { atf_set descr 'Binat-from-any bug.' ; }
-binat_body () {
-    ( echo 'binat on em1 inet6 from fc00::/64 to any -> fc00:0:0:1::/64'
-      echo 'binat on em1 inet6 from any to fc00:0:0:1::/64 -> fc00::/64' ) |
-	atf_check "$pfctl_bin" -nf - ; }
+for i in ${pftests} ; do
+    atf_test_case "pf${i}"
+    eval "pf${i}_head () { atf_set descr pf${i} ; }"
+    eval "pf${i}_body () { \
+              atf_check -o file:$(atf_get_srcdir)/pf${i}.ok \
+              ${pfctl_bin} -nvf - < $(atf_get_srcdir)/pf${i}.in ; }"
+done
 
-atf_test_case timeout
-timeout_head () { atf_set descr 'Set-timeout-interval bug.' ; }
-timeout_body () {
-    echo 'set timeout interval 10' |
-	atf_check "$pfctl_bin" -nf - ; }
+atf_init_test_cases () {
+    for i in ${pftests} ; do atf_add_test_case "pf${i}" ; done ; }
 
-atf_init_test_cases () { atf_add_test_case mini
-			 atf_add_test_case binat
-			 atf_add_test_case timeout ; }
