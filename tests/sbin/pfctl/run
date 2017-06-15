@@ -15,8 +15,13 @@ for i in ${pftests} ; do
     eval "pf${i}_body () { \
               atf_check -o file:$(atf_get_srcdir)/pf${i}.ok \
               ${pfctl_bin} -o none -nvf - < $(atf_get_srcdir)/pf${i}.in ; }"
+    atf_test_case "selfpf${i}"
+    eval "selfpf${i}_head () { atf_set descr selfpf${i} ; }"
+    eval "selfpf${i}_body () { \
+              atf_check -o file:$(atf_get_srcdir)/pf${i}.ok \
+              ${pfctl_bin} -o none -nvf - < $(atf_get_srcdir)/pf${i}.ok ; }"
 done
 
 atf_init_test_cases () {
-    for i in ${pftests} ; do atf_add_test_case "pf${i}" ; done ; }
-
+    for i in ${pftests} ; do atf_add_test_case "pf${i}"
+			     atf_add_test_case "selfpf${i}" ; done ; }
