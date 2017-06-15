@@ -1,1 +1,1 @@
-pass proto tcp scrub(reassemble tcp)
+#pass proto tcp scrub(reassemble tcp)
