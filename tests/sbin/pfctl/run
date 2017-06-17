@@ -2,24 +2,34 @@
 
 pfctl_bin=/usr/obj/usr/src/sbin/pfctl/pfctl
 
-pftests="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015
-016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032
-034 035 036 038 039 040 041 044 046 047 048 049 050 052 053 054 055
-056 057 060 061 065 066 067 068 069 070 071 072 073 074 075 076 077
-078 079 080 081 082 083 084 085 086 087 088 089 090 091 092 093 094
-095 096 097 098 099 100 101 102 103 104"
+# Tests 0001-0999 are copied from OpenBSD's regress/sbin/pfctl.
+# Tests 1001-1999 are ours (FreeBSD's own).
+
+# pf: Run pfctl -nv on pfNNNN.in and check that the output matches pfNNNN.ok.
+# selfpf: Feed pfctl output through pfctl again and verify it stays the same.
+
+pftests="0001 0002 0003 0004 0005 0006 0007 0008 0009 0010 0011 0012
+0013 0014 0015 0016 0017 0018 0019 0020 0021 0022 0023 0024 0025 0026
+0027 0028 0029 0030 0031 0032 0034 0035 0036 0038 0039 0040 0041 0044
+0046 0047 0048 0049 0050 0052 0053 0054 0055 0056 0057 0060 0061 0065
+0066 0067 0068 0069 0070 0071 0072 0073 0074 0075 0076 0077 0078 0079
+0080 0081 0082 0083 0084 0085 0086 0087 0088 0089 0090 0091 0092 0093
+0094 0095 0096 0097 0098 0099 0100 0101 0102 0103 0104 1001 1002"
 
 for i in ${pftests} ; do
     atf_test_case "pf${i}"
     eval "pf${i}_head () { atf_set descr pf${i} ; }"
     eval "pf${i}_body () { \
-              atf_check -o file:$(atf_get_srcdir)/pf${i}.ok \
-              ${pfctl_bin} -o none -nvf - < $(atf_get_srcdir)/pf${i}.in ; }"
+              cd $(atf_get_srcdir) && \
+              atf_check -e ignore -o file:pf${i}.ok \
+                  ${pfctl_bin} -o none -nvf - < pf${i}.in ; }"
+
     atf_test_case "selfpf${i}"
     eval "selfpf${i}_head () { atf_set descr selfpf${i} ; }"
     eval "selfpf${i}_body () { \
-              atf_check -o file:$(atf_get_srcdir)/pf${i}.ok \
-              ${pfctl_bin} -o none -nvf - < $(atf_get_srcdir)/pf${i}.ok ; }"
+              cd $(atf_get_srcdir) && \
+              atf_check -e ignore -o file:pf${i}.ok \
+                  ${pfctl_bin} -o none -nvf - < pf${i}.ok ; }"
 done
 
 atf_init_test_cases () {
