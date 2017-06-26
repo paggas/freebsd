@@ -4,4 +4,4 @@ syntax(2)
 
 test_suite('pfctl')
 
-atf_test_program{name='run'}
+atf_test_program{name='run.sh'}
