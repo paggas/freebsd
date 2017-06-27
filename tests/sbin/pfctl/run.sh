@@ -32,14 +32,14 @@ for i in ${pftests} ; do
     eval "pf${i}_head () { atf_set descr $(pf${i}_descr) ; }"
     eval "pf${i}_body () { \
               cd $(atf_get_srcdir) && \
-              atf_check -e ignore -o file:pf${i}.ok \
+              atf_check -o file:pf${i}.ok \
                   ${pfctl_bin} -o none -nvf - < pf${i}.in ; }"
 
     atf_test_case "selfpf${i}"
     eval "selfpf${i}_head () { atf_set descr self$(pf${i}_descr) ; }"
     eval "selfpf${i}_body () { \
               cd $(atf_get_srcdir) && \
-              atf_check -e ignore -o file:pf${i}.ok \
+              atf_check -o file:pf${i}.ok \
                   ${pfctl_bin} -o none -nvf - < pf${i}.ok ; }"
 done
 
