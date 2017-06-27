@@ -79,3 +79,5 @@ pf0102_descr () { echo pf0102-mixed-af ; }
 pf0104_descr () { echo pf0104-localhost-divert-to ; }
 pf1001_descr () { echo pf1001-binat ; }
 pf1002_descr () { echo pf1002-set-timeout-interval ; }
+pf1003_descr () { echo pf1003-altq ; }
+pf1004_descr () { echo pf1004-altq-cbq-codel ; }
