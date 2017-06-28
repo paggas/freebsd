@@ -1,4 +1,4 @@
-#! /usr/bin/env atf-sh
+# Make will add a shebang line at the top of this file.
 
 pfctl_bin=/usr/obj/usr/src/sbin/pfctl/pfctl
 
@@ -25,7 +25,7 @@ pftests="0001 0002 0003 0004 0005 0006 0007 0008 0009 0010 0011 0012
 0079 0081 0082 0084 0085 0087 0088 0089 0090 0091 0092 0094 0095 0096
 0097 0098 0100 0101 0102 0104 1001 1002 1003 1004"
 
-. $(atf_get_srcdir)/run.descr.sh
+. $(atf_get_srcdir)/pfctl_test.descr.sh
 
 for i in ${pftests} ; do
     atf_test_case "pf${i}"

@@ -1,7 +1,0 @@
--- Kyuafile
-
-syntax(2)
-
-test_suite('pfctl')
-
-atf_test_program{name='run.sh'}
