@@ -20,6 +20,7 @@ block_return_head () {
 }
 block_return_body () {
     rules="block return in on $REMOTE_IF proto tcp to port 50000"
+    atf_check ssh "$SSH" kldload -n pf
     echo "$rules" | atf_check -e ignore ssh "$SSH" pfctl -ef -
     atf_check daemon -p nc.50000.pid ssh "$SSH" nc -l 50000
     atf_check daemon -p nc.50001.pid ssh "$SSH" nc -l 50001
@@ -38,6 +39,7 @@ block_drop_head () {
 }
 block_drop_body () {
     rules="block drop in on $REMOTE_IF proto tcp to port 50000"
+    atf_check ssh "$SSH" kldload -n pf
     echo "$rules" | atf_check -e ignore ssh "$SSH" pfctl -ef -
     atf_check daemon -p nc.50000.pid ssh "$SSH" nc -l 50000
     atf_check daemon -p nc.50001.pid ssh "$SSH" nc -l 50001
