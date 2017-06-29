@@ -3,81 +3,81 @@
 # Keep description string without whitespace, or problems might occur
 # with the eval expressions in the main file!
 
-pf0001_descr () { echo pf0001-pass ; }
-pf0002_descr () { echo pf0002-return ; }
-pf0003_descr () { echo pf0003-flags ; }
-pf0004_descr () { echo pf0004-port ; }
-pf0005_descr () { echo pf0005-var ; }
-pf0006_descr () { echo pf0006-assign ; }
-pf0007_descr () { echo pf0007-modulate ; }
-pf0008_descr () { echo pf0008-extern ; }
-pf0009_descr () { echo pf0009-interfaces ; }
-pf0010_descr () { echo pf0010-return-var ; }
-pf0011_descr () { echo pf0011-icmp-type ; }
-pf0012_descr () { echo pf0012-from-not ; }
-pf0013_descr () { echo pf0013-quick-any ; }
-pf0014_descr () { echo pf0014-quick-on ; }
-pf0016_descr () { echo pf0016-no-state ; }
-pf0018_descr () { echo pf0018-test-list ; }
-pf0019_descr () { echo pf0019-evil-good-in ; }
-pf0020_descr () { echo pf0020-evil-good-out ; }
-pf0022_descr () { echo pf0022-set ; }
-pf0023_descr () { echo pf0023-block-on-not ; }
-pf0024_descr () { echo pf0024-pass-assign ; }
-pf0025_descr () { echo pf0025-antispoof ; }
-pf0026_descr () { echo pf0026-block-bracket ; }
-pf0028_descr () { echo pf0028-block-quick ; }
-pf0030_descr () { echo pf0030-line-continuation ; }
-pf0031_descr () { echo pf0031-block-policy ; }
-pf0032_descr () { echo pf0032-pass-to-any ; }
-pf0034_descr () { echo pf0034-probability ; }
-pf0035_descr () { echo pf0035-match-on-tos ; }
-pf0038_descr () { echo pf0038-user ; }
-pf0039_descr () { echo pf0039-random-ordered-opts ; }
-pf0040_descr () { echo pf0040-block-pass ; }
-pf0041_descr () { echo pf0041-anchor ; }
-pf0047_descr () { echo pf0047-label ; }
-pf0048_descr () { echo pf0048-table ; }
-pf0049_descr () { echo pf0049-network-broadcast ; }
-pf0050_descr () { echo pf0050-double-macro-set ; }
-pf0052_descr () { echo pf0052-set-optimization ; }
-pf0053_descr () { echo pf0053-pass-to-label ; }
-pf0055_descr () { echo pf0055-set-timeout ; }
-pf0056_descr () { echo pf0056-bracket-opts ; }
-pf0057_descr () { echo pf0057-double-assign ; }
-pf0060_descr () { echo pf0060-netmask-multicast ; }
-pf0061_descr () { echo pf0061-dynaddr-with-netmask ; }
-pf0065_descr () { echo pf0065-antispoof-label ; }
-pf0067_descr () { echo pf0067-tag-regress ; }
-pf0069_descr () { echo pf0069-pass-tag-regress ; }
-pf0070_descr () { echo pf0070-block-out-tag-regress ; }
-pf0071_descr () { echo pf0071-block-in-tag-regress ; }
-pf0072_descr () { echo pf0072-binat-to-tag-regress ; }
-pf0074_descr () { echo pf0074-synproxy ; }
-pf0075_descr () { echo pf0075-tag-ssh ; }
-pf0077_descr () { echo pf0077-dynaddr-netmask ; }
-pf0078_descr () { echo pf0078-table-regress ; }
-pf0079_descr () { echo pf0079-no-route ; }
-pf0081_descr () { echo pf0081-ip-list-table-list ; }
-pf0082_descr () { echo pf0082-pass-from-table ; }
-pf0084_descr () { echo pf0084-source-track ; }
-pf0085_descr () { echo pf0085-tag-macro-expansion ; }
-pf0087_descr () { echo pf0087-rule-reordering ; }
-pf0088_descr () { echo pf0088-duplicate-rules ; }
-pf0089_descr () { echo pf0089-tcp-connection-tracking ; }
-pf0090_descr () { echo pf0090-log-bracket ; }
-pf0091_descr () { echo pf0091-nested-anchor ; }
-pf0092_descr () { echo pf0092-comments ; }
-pf0094_descr () { echo pf0094-ipv6-range ; }
-pf0095_descr () { echo pf0095-include ; }
-pf0096_descr () { echo pf0096-varset ; }
-pf0097_descr () { echo pf0097-divert-to ; }
-pf0098_descr () { echo pf0098-pass-all ; }
-pf0100_descr () { echo pf0100-anchor-paths ; }
-pf0101_descr () { echo pf0101-prio ; }
-pf0102_descr () { echo pf0102-mixed-af ; }
-pf0104_descr () { echo pf0104-localhost-divert-to ; }
-pf1001_descr () { echo pf1001-binat ; }
-pf1002_descr () { echo pf1002-set-timeout-interval ; }
-pf1003_descr () { echo pf1003-altq ; }
-pf1004_descr () { echo pf1004-altq-cbq-codel ; }
+pf0001_descr () { echo "pass" ; }
+pf0002_descr () { echo "return" ; }
+pf0003_descr () { echo "flags" ; }
+pf0004_descr () { echo "port" ; }
+pf0005_descr () { echo "var" ; }
+pf0006_descr () { echo "assign" ; }
+pf0007_descr () { echo "modulate" ; }
+pf0008_descr () { echo "extern" ; }
+pf0009_descr () { echo "interfaces" ; }
+pf0010_descr () { echo "return var" ; }
+pf0011_descr () { echo "icmp type" ; }
+pf0012_descr () { echo "from not" ; }
+pf0013_descr () { echo "quick any" ; }
+pf0014_descr () { echo "quick on" ; }
+pf0016_descr () { echo "no state" ; }
+pf0018_descr () { echo "test list" ; }
+pf0019_descr () { echo "evil good in" ; }
+pf0020_descr () { echo "evil good out" ; }
+pf0022_descr () { echo "set" ; }
+pf0023_descr () { echo "block on not" ; }
+pf0024_descr () { echo "pass assign" ; }
+pf0025_descr () { echo "antispoof" ; }
+pf0026_descr () { echo "block bracket" ; }
+pf0028_descr () { echo "block quick" ; }
+pf0030_descr () { echo "line continuation" ; }
+pf0031_descr () { echo "block policy" ; }
+pf0032_descr () { echo "pass to any" ; }
+pf0034_descr () { echo "probability" ; }
+pf0035_descr () { echo "match on tos" ; }
+pf0038_descr () { echo "user" ; }
+pf0039_descr () { echo "random ordered opts" ; }
+pf0040_descr () { echo "block pass" ; }
+pf0041_descr () { echo "anchor" ; }
+pf0047_descr () { echo "label" ; }
+pf0048_descr () { echo "table" ; }
+pf0049_descr () { echo "network broadcast" ; }
+pf0050_descr () { echo "double macro set" ; }
+pf0052_descr () { echo "set optimization" ; }
+pf0053_descr () { echo "pass to label" ; }
+pf0055_descr () { echo "set timeout" ; }
+pf0056_descr () { echo "bracket opts" ; }
+pf0057_descr () { echo "double assign" ; }
+pf0060_descr () { echo "netmask multicast" ; }
+pf0061_descr () { echo "dynaddr with netmask" ; }
+pf0065_descr () { echo "antispoof label" ; }
+pf0067_descr () { echo "tag regress" ; }
+pf0069_descr () { echo "pass tag regress" ; }
+pf0070_descr () { echo "block out tag regress" ; }
+pf0071_descr () { echo "block in tag regress" ; }
+pf0072_descr () { echo "binat to tag regress" ; }
+pf0074_descr () { echo "synproxy" ; }
+pf0075_descr () { echo "tag ssh" ; }
+pf0077_descr () { echo "dynaddr netmask" ; }
+pf0078_descr () { echo "table regress" ; }
+pf0079_descr () { echo "no route" ; }
+pf0081_descr () { echo "ip list table list" ; }
+pf0082_descr () { echo "pass from table" ; }
+pf0084_descr () { echo "source track" ; }
+pf0085_descr () { echo "tag macro expansion" ; }
+pf0087_descr () { echo "rule reordering" ; }
+pf0088_descr () { echo "duplicate rules" ; }
+pf0089_descr () { echo "tcp connection tracking" ; }
+pf0090_descr () { echo "log bracket" ; }
+pf0091_descr () { echo "nested anchor" ; }
+pf0092_descr () { echo "comments" ; }
+pf0094_descr () { echo "ipv6 range" ; }
+pf0095_descr () { echo "include" ; }
+pf0096_descr () { echo "varset" ; }
+pf0097_descr () { echo "divert to" ; }
+pf0098_descr () { echo "pass all" ; }
+pf0100_descr () { echo "anchor paths" ; }
+pf0101_descr () { echo "prio" ; }
+pf0102_descr () { echo "mixed af" ; }
+pf0104_descr () { echo "localhost divert to" ; }
+pf1001_descr () { echo "binat" ; }
+pf1002_descr () { echo "set timeout interval" ; }
+pf1003_descr () { echo "altq" ; }
+pf1004_descr () { echo "altq cbq codel" ; }

@@ -29,14 +29,14 @@ pftests="0001 0002 0003 0004 0005 0006 0007 0008 0009 0010 0011 0012
 
 for i in ${pftests} ; do
     atf_test_case "pf${i}"
-    eval "pf${i}_head () { atf_set descr $(pf${i}_descr) ; }"
+    eval "pf${i}_head () { atf_set descr \"$(pf${i}_descr)\" ; }"
     eval "pf${i}_body () { \
               cd $(atf_get_srcdir) && \
               atf_check -o file:pf${i}.ok \
                   ${pfctl_bin} -o none -nvf - < pf${i}.in ; }"
 
     atf_test_case "selfpf${i}"
-    eval "selfpf${i}_head () { atf_set descr self$(pf${i}_descr) ; }"
+    eval "selfpf${i}_head () { atf_set descr \"self$(pf${i}_descr)\" ; }"
     eval "selfpf${i}_body () { \
               cd $(atf_get_srcdir) && \
               atf_check -o file:pf${i}.ok \
