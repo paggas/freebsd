@@ -7,7 +7,7 @@
 # SSH root access to the test machine is required for the tests to
 # work.
 
-. "$(atf_get_srcdir)/pf_test.conf.sh"
+. "$(atf_get_srcdir)/files/pf_test.conf.sh"
 
 # Starts two instances of nc on the remote machine, listening on two
 # different ports, of which one port is blocked-with-return by the
