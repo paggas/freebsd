@@ -52,6 +52,14 @@ block_drop_cleanup () {
     [ -e nc.50001.pid ] && kill `cat nc.50001.pid`
 }
 
+# This test uses 2 interfaces to connect to the test machine,
+# $REMOTE_IF_1 and $REMOTE_IF_2.  The test machine is doing reassembly
+# on one of the two interfaces.  We send one echo request on each
+# interface of size 3000, which will be fragmented before being sent.
+# We capture the traffic on the test machine's pflog and transfer the
+# capture file to the host machine for processing.  The capture file
+# should show a reassembled echo request packet on one interface and
+# the original fragmented set of packets on the other.
 atf_test_case scrub_todo cleanup
 scrub_todo_head () {
     atf_set descr 'Scrub on one of two interfaces and test difference.'
@@ -63,19 +71,23 @@ scrub_todo_body () {
            pass log (all, to pflog0) on { $REMOTE_IF_1 $REMOTE_IF_2 }"
     atf_check ssh "$SSH" kldload -n pf pflog
     echo "$rules" | atf_check -e ignore ssh "$SSH" pfctl -ef -
-    # FIXME not sure why this doesn't work with atf_check
+    # TODO not sure why this doesn't work with atf_check
     #atf_check -o file:tempdir.var ssh "$SSH" mktemp -dt pf_test.tmp
     ssh "$SSH" mktemp -dt pf_test.tmp > tempdir.var
     tempdir="`cat tempdir.var`"
     atf_check daemon -p tcpdump.pid \
 	      ssh "$SSH" tcpdump -U -i pflog0 -w "$tempdir/pflog.pcap"
-    atf_check -o ignore ping -c1 -s6000 "$REMOTE_ADDR_1"
-    atf_check -o ignore ping -c1 -s6000 "$REMOTE_ADDR_2"
+    atf_check -o ignore ping -c1 -s3000 "$REMOTE_ADDR_1"
+    atf_check -o ignore ping -c1 -s3000 "$REMOTE_ADDR_2"
     sleep 2 # wait for tcpdump to pick up everything
     kill "`cat tcpdump.pid`"
     sleep 2 # wait for tcpdump to write out everything
     atf_check scp "$SSH:$tempdir/pflog.pcap" ./
-    atf_check cp pflog.pcap /home/paggas/
+    # TODO following will be removed when the test is complete, but
+    # since processing isn't implemented yet, we just save the file
+    # for now.
+    atf_check cp pflog.pcap "$(atf_get_srcdir)/"
+    # TODO process pflog.pcap for verification
 }
 scrub_todo_cleanup () {
     kill "`cat tcpdump.pid`"
