@@ -19,13 +19,13 @@ block_return_head () {
     atf_set descr 'Block-with-return a port and test that it is blocked.'
 }
 block_return_body () {
-    rules="block return in on $REMOTE_IF proto tcp to port 50000"
+    rules="block return in on $REMOTE_IF_1 proto tcp to port 50000"
     atf_check ssh "$SSH" kldload -n pf
     echo "$rules" | atf_check -e ignore ssh "$SSH" pfctl -ef -
     atf_check daemon -p nc.50000.pid ssh "$SSH" nc -l 50000
     atf_check daemon -p nc.50001.pid ssh "$SSH" nc -l 50001
-    atf_check -s exit:1 -e empty  nc -z "$REMOTE_ADDR" 50000
-    atf_check -s exit:0 -e ignore nc -z "$REMOTE_ADDR" 50001
+    atf_check -s exit:1 -e empty  nc -z "$REMOTE_ADDR_1" 50000
+    atf_check -s exit:0 -e ignore nc -z "$REMOTE_ADDR_1" 50001
 }
 block_return_cleanup () {
     atf_check -e ignore ssh "$SSH" pfctl -dFa
@@ -38,13 +38,13 @@ block_drop_head () {
     atf_set descr 'Block-with-drop a port and test that it is blocked.'
 }
 block_drop_body () {
-    rules="block drop in on $REMOTE_IF proto tcp to port 50000"
+    rules="block drop in on $REMOTE_IF_1 proto tcp to port 50000"
     atf_check ssh "$SSH" kldload -n pf
     echo "$rules" | atf_check -e ignore ssh "$SSH" pfctl -ef -
     atf_check daemon -p nc.50000.pid ssh "$SSH" nc -l 50000
     atf_check daemon -p nc.50001.pid ssh "$SSH" nc -l 50001
-    atf_check -s exit:1 -e empty  nc -z -w 4 "$REMOTE_ADDR" 50000
-    atf_check -s exit:0 -e ignore nc -z "$REMOTE_ADDR" 50001
+    atf_check -s exit:1 -e empty  nc -z -w 4 "$REMOTE_ADDR_1" 50000
+    atf_check -s exit:0 -e ignore nc -z "$REMOTE_ADDR_1" 50001
 }
 block_drop_cleanup () {
     atf_check -e ignore ssh "$SSH" pfctl -dFa
@@ -52,7 +52,40 @@ block_drop_cleanup () {
     [ -e nc.50001.pid ] && kill `cat nc.50001.pid`
 }
 
+atf_test_case scrub_todo cleanup
+scrub_todo_head () {
+    atf_set descr 'Scrub on one of two interfaces and test difference.'
+}
+scrub_todo_body () {
+    # files to be used in local directory: tempdir.var tcpdump.pid
+    # files to be used in remote temporary directory: pflog.pcap
+    rules="scrub in on $REMOTE_IF_1 all fragment reassemble
+           pass log (all, to pflog0) on { $REMOTE_IF_1 $REMOTE_IF_2 }"
+    atf_check ssh "$SSH" kldload -n pf pflog
+    echo "$rules" | atf_check -e ignore ssh "$SSH" pfctl -ef -
+    # FIXME not sure why this doesn't work with atf_check
+    #atf_check -o file:tempdir.var ssh "$SSH" mktemp -dt pf_test.tmp
+    ssh "$SSH" mktemp -dt pf_test.tmp > tempdir.var
+    tempdir="`cat tempdir.var`"
+    atf_check daemon -p tcpdump.pid \
+	      ssh "$SSH" tcpdump -U -i pflog0 -w "$tempdir/pflog.pcap"
+    atf_check -o ignore ping -c1 -s6000 "$REMOTE_ADDR_1"
+    atf_check -o ignore ping -c1 -s6000 "$REMOTE_ADDR_2"
+    sleep 2 # wait for tcpdump to pick up everything
+    kill "`cat tcpdump.pid`"
+    sleep 2 # wait for tcpdump to write out everything
+    atf_check scp "$SSH:$tempdir/pflog.pcap" ./
+    atf_check cp pflog.pcap /home/paggas/
+}
+scrub_todo_cleanup () {
+    kill "`cat tcpdump.pid`"
+    tempdir="`cat tempdir.var`"
+    ssh "$SSH" "rm -r \"$tempdir\" ;
+                pfctl -dFa"
+}
+
 atf_init_test_cases () {
     atf_add_test_case block_return
     atf_add_test_case block_drop
+    atf_add_test_case scrub_todo
 }
