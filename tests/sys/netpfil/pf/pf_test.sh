@@ -117,9 +117,31 @@ scrub_forward_cleanup () {
                 sysctl net.inet.ip.forwarding=0"
 }
 
+atf_test_case scrub_forward6 cleanup
+scrub_forward6_head () {
+    atf_set descr 'Scrub defrag with forward on one \
+of two interfaces and test difference, IPv6 version.'
+}
+scrub_forward6_body () {
+    rules="scrub in on $REMOTE_IF_1 all fragment reassemble
+           pass log (all, to pflog0) on { $REMOTE_IF_1 $REMOTE_IF_2 }"
+    cd "$(atf_get_srcdir)"
+    atf_check ssh "$SSH" kldload -n pf
+    echo "$rules" | atf_check -e ignore ssh "$SSH" pfctl -ef -
+    atf_check -o ignore ssh "$SSH" sysctl net.inet6.ip6.forwarding=1
+    cd files &&
+	atf_check python2 scrub6.py &&
+	cd ..
+}
+scrub_forward6_cleanup () {
+    ssh "$SSH" "pfctl -dFa ;
+                sysctl net.inet6.ip6.forwarding=0"
+}
+
 atf_init_test_cases () {
     atf_add_test_case block_return
     atf_add_test_case block_drop
     # atf_add_test_case scrub_todo
     atf_add_test_case scrub_forward
+    atf_add_test_case scrub_forward6
 }
