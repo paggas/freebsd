@@ -3,6 +3,6 @@
 TESTSDIR=	${TESTSBASE}/sys/netpfil/pf/files
 BINDIR=		${TESTSDIR}
 
-FILES=		pf_test.conf.sh
+FILES=		pf_test_conf.sh scrub.py conf.py
 
 .include <bsd.progs.mk>
