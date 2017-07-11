@@ -1,6 +1,4 @@
-# Make will add a shebang line at the top of this file.
-
-pfctl_bin=/usr/obj/usr/src/sbin/pfctl/pfctl
+# Make will add a #! line at the top of this file.
 
 # Tests 0001-0999 are copied from OpenBSD's regress/sbin/pfctl.
 # Tests 1001-1999 are ours (FreeBSD's own).
@@ -25,7 +23,7 @@ pftests="0001 0002 0003 0004 0005 0006 0007 0008 0009 0010 0011 0012
 0079 0081 0082 0084 0085 0087 0088 0089 0090 0091 0092 0094 0095 0096
 0097 0098 0100 0101 0102 0104 1001 1002 1003 1004"
 
-. $(atf_get_srcdir)/files/pfctl_test.descr.sh
+. $(atf_get_srcdir)/files/pfctl_test_descr.sh
 
 for i in ${pftests} ; do
     atf_test_case "pf${i}"
@@ -33,14 +31,14 @@ for i in ${pftests} ; do
     eval "pf${i}_body () { \
               cd $(atf_get_srcdir)/files && \
               atf_check -o file:pf${i}.ok \
-                  ${pfctl_bin} -o none -nvf - < pf${i}.in ; }"
+                  pfctl -o none -nvf - < pf${i}.in ; }"
 
     atf_test_case "selfpf${i}"
     eval "selfpf${i}_head () { atf_set descr \"self$(pf${i}_descr)\" ; }"
     eval "selfpf${i}_body () { \
               cd $(atf_get_srcdir)/files && \
               atf_check -o file:pf${i}.ok \
-                  ${pfctl_bin} -o none -nvf - < pf${i}.ok ; }"
+                  pfctl -o none -nvf - < pf${i}.ok ; }"
 done
 
 atf_init_test_cases () {
