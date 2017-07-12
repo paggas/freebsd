@@ -8,7 +8,6 @@ ${PACKAGE}FILES+=		README
 
 KYUAFILE= yes
 
-SUBDIR+= sbin
 SUBDIR+= etc
 SUBDIR+= sys
 
