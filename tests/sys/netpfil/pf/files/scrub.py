@@ -5,6 +5,8 @@ import scapy.all as sp
 import conf
 import time
 import random
+import itertools as it
+
 import util
 
 raw_500 = ('abcdefghijklmnopqrstuvwxyz' * 22)[random.randrange(26):][:500]
@@ -29,10 +31,14 @@ def sendpackets():
 sender = mp.Process(target=sendpackets)
 sender.start()
 
-sniffed = []
-sp.sniff(iface=conf.LOCAL_IF_3, prn=sniffed.append, timeout=5)
+sniffed = sp.sniff(iface=conf.LOCAL_IF_3, timeout=5)
 
 sender.join()
+
+for i, p in it.izip(it.count(), sniffed):
+    print '==== Packet', i, '===='
+    p.show()
+    print
 
 success1, success2 = False, False
 

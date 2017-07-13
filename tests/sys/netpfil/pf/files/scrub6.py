@@ -5,6 +5,8 @@ import scapy.all as sp
 import conf
 import time
 import random
+import itertools as it
+
 import util
 
 raw_500 = ('abcdefghijklmnopqrstuvwxyz' * 22)[random.randrange(26):][:500]
@@ -29,10 +31,23 @@ def sendpackets():
 sender = mp.Process(target=sendpackets)
 sender.start()
 
-sniffed = []
-sp.sniff(iface=conf.LOCAL_IF_3, prn=sniffed.append, timeout=10)
+sniffed = sp.sniff(iface=conf.LOCAL_IF_3, timeout=10)
 
 sender.join()
+
+for i, p in it.izip(it.count(), sniffed):
+    show = []
+    while type(p) != sp.NoPayload:
+        if type(p) == sp.IPv6:
+            show.append(('IPv6', p.src, p.dst))
+        elif type(p) == sp.IPv6ExtHdrFragment:
+            show.append(('Fragment', p.id, p.offset, p.m))
+        elif type(p) == sp.ICMPv6EchoRequest:
+            show.append(('Echo-Request', p.data))
+        elif type(p) == sp.Raw:
+            show.append(('Raw', p.load))
+        p = p.payload
+    print 'Packet', i, ':', show
 
 success1, success2 = False, False
 

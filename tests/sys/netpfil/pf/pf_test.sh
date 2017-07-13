@@ -105,9 +105,16 @@ scrub_forward_body () {
     rules="scrub in on $REMOTE_IF_1 all fragment reassemble
            pass log (all, to pflog0) on { $REMOTE_IF_1 $REMOTE_IF_2 }"
     cd "$(atf_get_srcdir)"
+    # Enable PF.
     atf_check ssh "$SSH" kldload -n pf
     echo "$rules" | atf_check -e ignore ssh "$SSH" pfctl -ef -
+    # Enable forwarding.
     atf_check -o ignore ssh "$SSH" sysctl net.inet.ip.forwarding=1
+    # Warm up connections, so that network discovery is complete.
+    atf_check -o ignore ping -c3 "$REMOTE_ADDR_1"
+    atf_check -o ignore ping -c3 "$REMOTE_ADDR_2"
+    atf_check -o ignore ping -c3 "$REMOTE_ADDR_3"
+    # Run test.
     cd files &&
 	atf_check python2 scrub.py &&
 	cd ..
@@ -126,9 +133,16 @@ scrub_forward6_body () {
     rules="scrub in on $REMOTE_IF_1 all fragment reassemble
            pass log (all, to pflog0) on { $REMOTE_IF_1 $REMOTE_IF_2 }"
     cd "$(atf_get_srcdir)"
+    # Enable PF.
     atf_check ssh "$SSH" kldload -n pf
     echo "$rules" | atf_check -e ignore ssh "$SSH" pfctl -ef -
+    # Enable forwarding.
     atf_check -o ignore ssh "$SSH" sysctl net.inet6.ip6.forwarding=1
+    # Warm up connections, so that network discovery is complete.
+    atf_check -o ignore ping6 -c3 "$REMOTE_ADDR6_1"
+    atf_check -o ignore ping6 -c3 "$REMOTE_ADDR6_2"
+    atf_check -o ignore ping6 -c3 "$REMOTE_ADDR6_3"
+    # Run test.
     cd files &&
 	atf_check python2 scrub6.py &&
 	cd ..
