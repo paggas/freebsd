@@ -15,8 +15,8 @@ class Defragmenter(object):
 
         # Find IP layer.
         p = packet
-        while p.name != 'NoPayload':
-            if p.name == 'IP':
+        while type(p) != sp.NoPayload:
+            if type(p) == sp.IP:
                 break
             p = p.payload
         else:
@@ -64,11 +64,8 @@ class Defragmenter(object):
 
 def pkey6(packet):
     '''Packet key.'''
-    if sp.IPv6ExtHdrFragment in packet:
-        id = packet[sp.IPv6ExtHdrFragment].id
-    else:
-        raise IndexError('No IPv6ExtHdrFragment header found')
-    return (packet.src, packet.dst, packet.nh, id)
+    id = packet[sp.IPv6ExtHdrFragment].id
+    return (packet.src, packet.dst, id)
 
 class Defragmenter6(object):
     def __init__(self):
@@ -77,25 +74,25 @@ class Defragmenter6(object):
     def more(self, packet):
         '''Add fragmented packet, return whole packet if complete.
 
-        Returns (p, n), where:
+        Returns None on no reassembly, or (p, n), where:
             p is the defragmented packet ;
             n is the number of original fragments.'''
 
         # Find IPv6 layer.
         p = packet
-        while p.name != 'NoPayload':
-            if p.name == 'IPv6':
+        while type(p) != sp.NoPayload:
+            if type(p) == sp.IPv6:
                 break
             p = p.payload
         else:
             return
 
         # Return directly if not fragmented.
-        if not (sp.IPv6ExtHdrFragment in p):
+        if type(p.payload) != sp.IPv6ExtHdrFragment:
             return (p, 1)
 
         # Add fragment to its packet group.
-        key, val = pkey6(p), (p[sp.IPv6ExtHdrFragment].offset, p)
+        key, val = pkey6(p), (p.payload.offset, p)
         if key in self.frags:
             self.frags[key].append(val)
             self.stats[key] += 1
@@ -111,8 +108,8 @@ class Defragmenter6(object):
         while i + 1 < len(frag):
             f1, p1 = frag[i]
             f2, p2 = frag[i + 1]
-            pfrag1, pfrag2 = p1[sp.IPv6ExtHdrFragment], p2[sp.IPv6ExtHdrFragment]
-            len1, len2 = (len(pfrag1.payload), len(pfrag2.payload))
+            pfrag1, pfrag2 = p1.payload, p2.payload
+            len1, len2 = len(pfrag1.payload), len(pfrag2.payload)
             if len1 == (f2 - f1) * 8:
                 header = sp.IPv6(tc=p1.tc, fl=p1.fl, hlim=p1.hlim,
                                  src=p1.src, dst=p1.dst)
@@ -128,11 +125,11 @@ class Defragmenter6(object):
 
         # Return packet if complete.
         p = frag[0][1]
-        pfrag = p[sp.IPv6ExtHdrFragment]
+        pfrag = p.payload
         isfirst, islast = (not pfrag.offset), (not pfrag.m)
         if len(frag) == 1 and isfirst and islast:
             del self.frags[key]
-            upperheaders = sp.IPv6(str(p)[:len(p) - len(pfrag)])
-            upperheaders.nh = pfrag.nh
+            header = sp.IPv6(tc=p.tc, fl=p.fl, hlim=p.hlim, nh=pfrag.nh,
+                             src=p.src, dst=p.dst)
             payload = str(pfrag.payload)
-            return (upperheaders / payload, self.stats[key])
+            return (header / payload, self.stats[key])
