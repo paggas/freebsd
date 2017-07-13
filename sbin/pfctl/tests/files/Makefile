@@ -3,7 +3,10 @@
 TESTSDIR=	${TESTSBASE}/sbin/pfctl/files
 BINDIR=		${TESTSDIR}
 
-FILES!=		ls pf????.in pf????.include pf????.ok
-FILES+=		pfctl_test_descr.sh
+# We use ${.CURDIR} as workaround so that the glob patterns work.
+FILES=		${.CURDIR}/pf????.in
+FILES+=		${.CURDIR}/pf????.include
+FILES+=		${.CURDIR}/pf????.ok
+FILES+=		${.CURDIR}/pfctl_test_descr.sh
 
 .include <bsd.progs.mk>
