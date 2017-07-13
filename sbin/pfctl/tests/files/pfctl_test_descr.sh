@@ -1,8 +1,5 @@
 # atf-sh, to be sourced by run.sh
 
-# Keep description string without whitespace, or problems might occur
-# with the eval expressions in the main file!
-
 pf0001_descr () { echo "Pass with labels" ; }
 pf0002_descr () { echo "Block/pass" ; }
 pf0003_descr () { echo "Block/pass with flags" ; }
