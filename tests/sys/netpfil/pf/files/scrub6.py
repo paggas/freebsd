@@ -1,13 +1,12 @@
 # /usr/bin/env python2
 
-import multiprocessing as mp
 import scapy.all as sp
-import conf
-import time
-import random
-import itertools as it
 
-import util
+import itertools as it
+import multiprocessing as mp
+import random, sys, time
+
+import conf, util
 
 raw_500 = ('abcdefghijklmnopqrstuvwxyz' * 22)[random.randrange(26):][:500]
 
@@ -27,6 +26,17 @@ def sendpackets():
     time.sleep(1)
     sp.sendp(sp.fragment6(tofrag1, 400), iface=conf.LOCAL_IF_1, verbose=False)
     sp.sendp(sp.fragment6(tofrag2, 400), iface=conf.LOCAL_IF_2, verbose=False)
+
+if len(sys.argv) < 2:
+    exit('No command given')
+
+if sys.argv[1] == 'sendonly':
+    sendpackets()
+    exit()
+else:
+    exit('Bad command: %s' % repr(sys.argv[1]))
+
+# Following sniff-and-reassembly code kept for future usage.
 
 sender = mp.Process(target=sendpackets)
 sender.start()

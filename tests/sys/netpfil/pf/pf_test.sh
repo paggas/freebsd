@@ -75,10 +75,10 @@ scrub_todo_body () {
     #atf_check_equal 0 "$?"
     tempdir="$(cat tempdir.var)"
     timeout=5
-    # TODO test without atf_check
     atf_check daemon -p tcpdump.pid ssh "$SSH" \
 	   "timeout $timeout tcpdump -U -i pflog0 -w $tempdir/pflog.pcap"
-    # TODO run test here
+    (cd "$(atf_get_srcdir)/files" &&
+    	atf_check python2 scrub6.py sendonly)
     # Wait for tcpdump to pick up everything.
     atf_check sleep "$(expr "$timeout" + 2)"
     # Not sure if following will work with atf_check
