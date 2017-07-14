@@ -52,49 +52,48 @@ block_drop_cleanup () {
     [ -e nc.50001.pid ] && kill `cat nc.50001.pid`
 }
 
-# # This test uses 2 interfaces to connect to the test machine,
-# # $REMOTE_IF_1 and $REMOTE_IF_2.  The test machine is doing reassembly
-# # on one of the two interfaces.  We send one echo request on each
-# # interface of size 3000, which will be fragmented before being sent.
-# # We capture the traffic on the test machine's pflog and transfer the
-# # capture file to the host machine for processing.  The capture file
-# # should show a reassembled echo request packet on one interface and
-# # the original fragmented set of packets on the other.
-# atf_test_case scrub_todo cleanup
-# scrub_todo_head () {
-#     atf_set descr 'Scrub on one of two interfaces and test difference.'
-# }
-# scrub_todo_body () {
-#     # files to be used in local directory: tempdir.var tcpdump.pid
-#     # files to be used in remote temporary directory: pflog.pcap
-#     rules="scrub in on $REMOTE_IF_1 all fragment reassemble
-#            pass log (all, to pflog0) on { $REMOTE_IF_1 $REMOTE_IF_2 }"
-#     atf_check ssh "$SSH" kldload -n pf pflog
-#     echo "$rules" | atf_check -e ignore ssh "$SSH" pfctl -ef -
-#     # TODO not sure why this doesn't work with atf_check
-#     #atf_check -o file:tempdir.var ssh "$SSH" mktemp -dt pf_test.tmp
-#     ssh "$SSH" mktemp -dt pf_test.tmp > tempdir.var
-#     tempdir="`cat tempdir.var`"
-#     atf_check daemon -p tcpdump.pid \
-# 	      ssh "$SSH" tcpdump -U -i pflog0 -w "$tempdir/pflog.pcap"
-#     atf_check -o ignore ping -c1 -s3000 "$REMOTE_ADDR_1"
-#     atf_check -o ignore ping -c1 -s3000 "$REMOTE_ADDR_2"
-#     sleep 2 # wait for tcpdump to pick up everything
-#     kill "`cat tcpdump.pid`"
-#     sleep 2 # wait for tcpdump to write out everything
-#     atf_check scp "$SSH:$tempdir/pflog.pcap" ./
-#     # TODO following will be removed when the test is complete, but
-#     # since processing isn't implemented yet, we just save the file
-#     # for now.
-#     atf_check cp pflog.pcap "$(atf_get_srcdir)/"
-#     # TODO process pflog.pcap for verification
-# }
-# scrub_todo_cleanup () {
-#     kill "`cat tcpdump.pid`"
-#     tempdir="`cat tempdir.var`"
-#     ssh "$SSH" "rm -r \"$tempdir\" ;
-#                 pfctl -dFa"
-# }
+# This test uses 2 interfaces to connect to the test machine,
+# $REMOTE_IF_1 and $REMOTE_IF_2.  The test machine is doing reassembly
+# on one of the two interfaces.  We send one echo request on each
+# interface of size 3000, which will be fragmented before being sent.
+# We capture the traffic on the test machine's pflog and transfer the
+# capture file to the host machine for processing.  The capture file
+# should show a reassembled echo request packet on one interface and
+# the original fragmented set of packets on the other.
+atf_test_case scrub_todo cleanup
+scrub_todo_head () {
+    atf_set descr 'Scrub on one of two interfaces and test difference.'
+}
+scrub_todo_body () {
+    # files to be used in local directory: tempdir.var tcpdump.pid
+    # files to be used in remote temporary directory: pflog.pcap
+    rules="scrub in on $REMOTE_IF_1 all fragment reassemble
+           pass log (all, to pflog0) on { $REMOTE_IF_1 $REMOTE_IF_2 }"
+    atf_check ssh "$SSH" 'kldload -n pf pflog'
+    echo "$rules" | atf_check -e ignore ssh "$SSH" 'pfctl -ef -'
+    atf_check -o save:tempdir.var ssh "$SSH" 'mktemp -dt pf_test.tmp'
+    #atf_check_equal 0 "$?"
+    tempdir="$(cat tempdir.var)"
+    timeout=5
+    # TODO test without atf_check
+    atf_check daemon -p tcpdump.pid ssh "$SSH" \
+	   "timeout $timeout tcpdump -U -i pflog0 -w $tempdir/pflog.pcap"
+    # TODO run test here
+    # Wait for tcpdump to pick up everything.
+    atf_check sleep "$(expr "$timeout" + 2)"
+    # Not sure if following will work with atf_check
+    atf_check scp "$SSH:$tempdir/pflog.pcap" ./
+    # TODO following will be removed when the test is complete, but
+    # since processing isn't implemented yet, we just save the file
+    # for now.
+    atf_check cp pflog.pcap "$(atf_get_srcdir)/"
+    # TODO process pflog.pcap for verification
+}
+scrub_todo_cleanup () {
+    kill "$(cat tcpdump.pid)"
+    tempdir="$(cat tempdir.var)"
+    ssh "$SSH" "rm -r \"$tempdir\" ; pfctl -dFa"
+}
 
 atf_test_case scrub_forward cleanup
 scrub_forward_head () {
@@ -116,7 +115,7 @@ scrub_forward_body () {
     atf_check -o ignore ping -c3 "$REMOTE_ADDR_3"
     # Run test.
     cd files &&
-	atf_check python2 scrub.py &&
+	atf_check python2 scrub_forward.py &&
 	cd ..
 }
 scrub_forward_cleanup () {
@@ -144,7 +143,7 @@ scrub_forward6_body () {
     atf_check -o ignore ping6 -c3 "$REMOTE_ADDR6_3"
     # Run test.
     cd files &&
-	atf_check python2 scrub6.py &&
+	atf_check python2 scrub_forward6.py &&
 	cd ..
 }
 scrub_forward6_cleanup () {
@@ -155,7 +154,7 @@ scrub_forward6_cleanup () {
 atf_init_test_cases () {
     atf_add_test_case block_return
     atf_add_test_case block_drop
-    # atf_add_test_case scrub_todo
+    atf_add_test_case scrub_todo
     atf_add_test_case scrub_forward
     atf_add_test_case scrub_forward6
 }
