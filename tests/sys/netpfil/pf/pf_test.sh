@@ -14,11 +14,11 @@
 # remote pf.  The test tries then to connect to the two instances from
 # the local machine.  The test succeeds if one connection succeeds but
 # the other one fails.
-atf_test_case block_return cleanup
-block_return_head () {
+atf_test_case remote_block_return cleanup
+remote_block_return_head () {
     atf_set descr 'Block-with-return a port and test that it is blocked.'
 }
-block_return_body () {
+remote_block_return_body () {
     rules="block return in on $REMOTE_IF_1 proto tcp to port 50000"
     atf_check ssh "$SSH" kldload -n pf
     echo "$rules" | atf_check -e ignore ssh "$SSH" pfctl -ef -
@@ -27,17 +27,17 @@ block_return_body () {
     atf_check -s exit:1 -e empty  nc -z "$REMOTE_ADDR_1" 50000
     atf_check -s exit:0 -e ignore nc -z "$REMOTE_ADDR_1" 50001
 }
-block_return_cleanup () {
+remote_block_return_cleanup () {
     atf_check -e ignore ssh "$SSH" pfctl -dFa
     [ -e nc.50000.pid ] && kill `cat nc.50000.pid`
     [ -e nc.50001.pid ] && kill `cat nc.50001.pid`
 }
 
-atf_test_case block_drop cleanup
-block_drop_head () {
+atf_test_case remote_block_drop cleanup
+remote_block_drop_head () {
     atf_set descr 'Block-with-drop a port and test that it is blocked.'
 }
-block_drop_body () {
+remote_block_drop_body () {
     rules="block drop in on $REMOTE_IF_1 proto tcp to port 50000"
     atf_check ssh "$SSH" kldload -n pf
     echo "$rules" | atf_check -e ignore ssh "$SSH" pfctl -ef -
@@ -46,7 +46,7 @@ block_drop_body () {
     atf_check -s exit:1 -e empty  nc -z -w 4 "$REMOTE_ADDR_1" 50000
     atf_check -s exit:0 -e ignore nc -z "$REMOTE_ADDR_1" 50001
 }
-block_drop_cleanup () {
+remote_block_drop_cleanup () {
     atf_check -e ignore ssh "$SSH" pfctl -dFa
     [ -e nc.50000.pid ] && kill `cat nc.50000.pid`
     [ -e nc.50001.pid ] && kill `cat nc.50001.pid`
@@ -60,11 +60,11 @@ block_drop_cleanup () {
 # capture file to the host machine for processing.  The capture file
 # should show a reassembled echo request packet on one interface and
 # the original fragmented set of packets on the other.
-atf_test_case scrub_todo cleanup
-scrub_todo_head () {
+atf_test_case remote_scrub_todo cleanup
+remote_scrub_todo_head () {
     atf_set descr 'Scrub on one of two interfaces and test difference.'
 }
-scrub_todo_body () {
+remote_scrub_todo_body () {
     # files to be used in local directory: tempdir.var tcpdump.pid
     # files to be used in remote temporary directory: pflog.pcap
     rules="scrub in on $REMOTE_IF_1 all fragment reassemble
@@ -89,18 +89,18 @@ scrub_todo_body () {
     atf_check cp pflog.pcap "$(atf_get_srcdir)/"
     # TODO process pflog.pcap for verification
 }
-scrub_todo_cleanup () {
+remote_scrub_todo_cleanup () {
     kill "$(cat tcpdump.pid)"
     tempdir="$(cat tempdir.var)"
     ssh "$SSH" "rm -r \"$tempdir\" ; pfctl -dFa"
 }
 
-atf_test_case scrub_forward cleanup
-scrub_forward_head () {
+atf_test_case remote_scrub_forward cleanup
+remote_scrub_forward_head () {
     atf_set descr 'Scrub defrag with forward on one \
 of two interfaces and test difference.'
 }
-scrub_forward_body () {
+remote_scrub_forward_body () {
     rules="scrub in on $REMOTE_IF_1 all fragment reassemble
            pass log (all, to pflog0) on { $REMOTE_IF_1 $REMOTE_IF_2 }"
     cd "$(atf_get_srcdir)"
@@ -118,17 +118,17 @@ scrub_forward_body () {
 	atf_check python2 scrub_forward.py &&
 	cd ..
 }
-scrub_forward_cleanup () {
+remote_scrub_forward_cleanup () {
     ssh "$SSH" "pfctl -dFa ;
                 sysctl net.inet.ip.forwarding=0"
 }
 
-atf_test_case scrub_forward6 cleanup
-scrub_forward6_head () {
+atf_test_case remote_scrub_forward6 cleanup
+remote_scrub_forward6_head () {
     atf_set descr 'Scrub defrag with forward on one \
 of two interfaces and test difference, IPv6 version.'
 }
-scrub_forward6_body () {
+remote_scrub_forward6_body () {
     rules="scrub in on $REMOTE_IF_1 all fragment reassemble
            pass log (all, to pflog0) on { $REMOTE_IF_1 $REMOTE_IF_2 }"
     cd "$(atf_get_srcdir)"
@@ -146,15 +146,15 @@ scrub_forward6_body () {
 	atf_check python2 scrub_forward6.py &&
 	cd ..
 }
-scrub_forward6_cleanup () {
+remote_scrub_forward6_cleanup () {
     ssh "$SSH" "pfctl -dFa ;
                 sysctl net.inet6.ip6.forwarding=0"
 }
 
 atf_init_test_cases () {
-    atf_add_test_case block_return
-    atf_add_test_case block_drop
-    atf_add_test_case scrub_todo
-    atf_add_test_case scrub_forward
-    atf_add_test_case scrub_forward6
+    atf_add_test_case remote_block_return
+    atf_add_test_case remote_block_drop
+    atf_add_test_case remote_scrub_todo
+    atf_add_test_case remote_scrub_forward
+    atf_add_test_case remote_scrub_forward6
 }
