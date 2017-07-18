@@ -8,6 +8,7 @@
 # work.
 
 . "$(atf_get_srcdir)/files/pf_test_conf.sh"
+. "$(atf_get_srcdir)/files/pf_test_util.sh"
 
 # Starts two instances of nc on the remote machine, listening on two
 # different ports, of which one port is blocked-with-return by the
@@ -151,10 +152,34 @@ remote_scrub_forward6_cleanup () {
                 sysctl net.inet6.ip6.forwarding=0"
 }
 
+atf_test_case scrub_pflog cleanup
+scrub_pflog_head () {
+    atf_set descr 'Scrub defrag with pflog on one \
+of two interfaces and test difference.'
+}
+scrub_pflog_body () {
+    pair_create 0 1
+    rules="scrub in on ${PAIR_0_IF_A} all fragment reassemble
+           pass log (all, to ${PFLOG_IF}) on { ${PAIR_0_IF_A} ${PAIR_1_IF_A} }"
+    cd "$(atf_get_srcdir)"
+    # Enable PF.
+    atf_check kldload -n pf pflog
+    echo "$rules" | atf_check -e ignore pfctl -ef -
+    # Run test.
+    cd files
+    atf_check python2 scrub_pflog.py
+}
+scrub_pflog_cleanup () {
+    pfctl -dFa
+    kldunload -n pf pflog
+    pair_destroy 0 1
+}
+
 atf_init_test_cases () {
     atf_add_test_case remote_block_return
     atf_add_test_case remote_block_drop
     atf_add_test_case remote_scrub_todo
     atf_add_test_case remote_scrub_forward
     atf_add_test_case remote_scrub_forward6
+    atf_add_test_case scrub_pflog
 }
