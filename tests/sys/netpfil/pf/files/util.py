@@ -50,7 +50,10 @@ class Defragmenter(object):
                                 proto=p1.proto, id=p1.id)
                 # Now copy MF flag from p2.
                 header1.flags = (header1.flags & ~1) | (p2.flags & 1)
+                # Step 1/2: important for correct length field.
                 p = header1 / (str(p1.payload) + str(p2.payload))
+                # Step 2/2: important to recreate all layers.
+                p = sp.IP(str(p))
                 frag[i:i + 2] = [(f1, p)]
             else:
                 i += 1

@@ -35,10 +35,10 @@ sniffed = sp.sniff(iface=conf.LOCAL_IF_3, timeout=5)
 
 sender.join()
 
-for i, p in it.izip(it.count(), sniffed):
-    print '==== Packet', i, '===='
-    p.show()
-    print
+# for i, p in it.izip(it.count(), sniffed):
+#     print '==== Packet', i, '===='
+#     p.show()
+#     print
 
 success1, success2 = False, False
 
@@ -53,13 +53,22 @@ for p in sniffed:
 
     # Success for interface 1 if packet received in 1 fragment,
     # i.e. scrub active on remote side.
-    success1 = success1 or (k == k1 and defr.stats[k] == 1 and
-                            str(pp.payload) == str(pp1.payload))
+    if not success1:
+        # print 'success1 == False'
+        success1 = (k == k1 and defr.stats[k] == 1 and
+                    str(pp.payload) == str(pp1.payload))
+        # print 'success1 ==', success1
 
     # Success for interface 2 if packet received in 2 fragments,
     # i.e. no scrub on remote side.
-    success2 = success2 or (k == k2 and defr.stats[k] == 2 and
-                            str(pp.payload) == str(pp2.payload))
+    if not success2:
+        # print 'success2 == False'
+        success2 = (k == k2 and defr.stats[k] == 2 and
+                    str(pp.payload) == str(pp2.payload))
+        # print 'success2 ==', success2
+
+# print 'success1 ==', success1
+# print 'success2 ==', success2
 
 if not (success1 and success2):
     exit(1)

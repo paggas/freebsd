@@ -38,7 +38,7 @@ sniffed = sp.sniff(iface=conf.PFLOG_IF, timeout=5)
 sender.join()
 
 for i, p in it.izip(it.count(), sniffed):
-    if sp.IP in p:
+    if True: #sp.IP in p:
         print '==== Packet', i, '===='
         p.show()
         print

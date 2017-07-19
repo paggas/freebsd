@@ -20,18 +20,22 @@ remote_block_return_head () {
     atf_set descr 'Block-with-return a port and test that it is blocked.'
 }
 remote_block_return_body () {
-    rules="block return in on $REMOTE_IF_1 proto tcp to port 50000"
-    atf_check ssh "$SSH" kldload -n pf
-    echo "$rules" | atf_check -e ignore ssh "$SSH" pfctl -ef -
-    atf_check daemon -p nc.50000.pid ssh "$SSH" nc -l 50000
-    atf_check daemon -p nc.50001.pid ssh "$SSH" nc -l 50001
-    atf_check -s exit:1 -e empty  nc -z "$REMOTE_ADDR_1" 50000
-    atf_check -s exit:0 -e ignore nc -z "$REMOTE_ADDR_1" 50001
+    block_port=50000
+    pass_port=50001
+    rules="block return in on ${REMOTE_IF_1} proto tcp to port ${block_port}"
+    atf_check ssh "${SSH}" "kldload -n pf"
+    echo "${rules}" | atf_check -e ignore ssh "${SSH}" "pfctl -ef -"
+    atf_check daemon -p nc.block.pid ssh "${SSH}" "nc -l ${block_port}"
+    atf_check daemon -p nc.pass.pid ssh "${SSH}" "nc -l ${pass_port}"
+    atf_check -s exit:1 -e empty  nc -z "${REMOTE_ADDR_1}" "${block_port}"
+    atf_check -s exit:0 -e ignore nc -z "${REMOTE_ADDR_1}" "${pass_port}"
 }
 remote_block_return_cleanup () {
-    atf_check -e ignore ssh "$SSH" pfctl -dFa
-    [ -e nc.50000.pid ] && kill `cat nc.50000.pid`
-    [ -e nc.50001.pid ] && kill `cat nc.50001.pid`
+    [ -e nc.block.pid ] && kill "$(cat nc.block.pid)"
+    [ -e nc.pass.pid ] && kill "$(cat nc.pass.pid)"
+    ssh "${SSH}" "pfctl -dFa ;
+                  kldunload -n pf ;
+		  true"
 }
 
 atf_test_case remote_block_drop cleanup
@@ -39,18 +43,25 @@ remote_block_drop_head () {
     atf_set descr 'Block-with-drop a port and test that it is blocked.'
 }
 remote_block_drop_body () {
-    rules="block drop in on $REMOTE_IF_1 proto tcp to port 50000"
-    atf_check ssh "$SSH" kldload -n pf
-    echo "$rules" | atf_check -e ignore ssh "$SSH" pfctl -ef -
-    atf_check daemon -p nc.50000.pid ssh "$SSH" nc -l 50000
-    atf_check daemon -p nc.50001.pid ssh "$SSH" nc -l 50001
-    atf_check -s exit:1 -e empty  nc -z -w 4 "$REMOTE_ADDR_1" 50000
-    atf_check -s exit:0 -e ignore nc -z "$REMOTE_ADDR_1" 50001
+    block_port=50000
+    pass_port=50001
+    rules="block drop in on ${REMOTE_IF_1} proto tcp to port ${block_port}"
+    # Prepare PF.
+    atf_check ssh "${SSH}" "kldload -n pf"
+    echo "${rules}" | atf_check -e ignore ssh "${SSH}" "pfctl -ef -"
+    # Setup test listeners.
+    atf_check daemon -p nc.block.pid ssh "${SSH}" "nc -l ${block_port}"
+    atf_check daemon -p nc.pass.pid ssh "${SSH}" "nc -l ${pass_port}"
+    # Run test.
+    atf_check -s exit:1 -e empty nc -z -w 4 "${REMOTE_ADDR_1}" "${block_port}"
+    atf_check -s exit:0 -e ignore nc -z "${REMOTE_ADDR_1}" "${pass_port}"
 }
 remote_block_drop_cleanup () {
-    atf_check -e ignore ssh "$SSH" pfctl -dFa
-    [ -e nc.50000.pid ] && kill `cat nc.50000.pid`
-    [ -e nc.50001.pid ] && kill `cat nc.50001.pid`
+    [ -e nc.block.pid ] && kill "$(cat nc.block.pid)"
+    [ -e nc.pass.pid ] && kill "$(cat nc.pass.pid)"
+    ssh "${SSH}" "pfctl -dFa ;
+               	  kldunload -n pf ;
+ 		  true"
 }
 
 # This test uses 2 interfaces to connect to the test machine,
@@ -102,26 +113,26 @@ remote_scrub_forward_head () {
 of two interfaces and test difference.'
 }
 remote_scrub_forward_body () {
-    rules="scrub in on $REMOTE_IF_1 all fragment reassemble
-           pass log (all, to pflog0) on { $REMOTE_IF_1 $REMOTE_IF_2 }"
+    rules="scrub in on ${REMOTE_IF_1} all fragment reassemble
+           pass log (all to pflog0) on { ${REMOTE_IF_1} ${REMOTE_IF_2} }"
     cd "$(atf_get_srcdir)"
     # Enable PF.
-    atf_check ssh "$SSH" kldload -n pf
-    echo "$rules" | atf_check -e ignore ssh "$SSH" pfctl -ef -
+    atf_check ssh "${SSH}" "kldload -n pf"
+    echo "${rules}" | atf_check -e ignore ssh "${SSH}" "pfctl -ef -"
     # Enable forwarding.
-    atf_check -o ignore ssh "$SSH" sysctl net.inet.ip.forwarding=1
+    atf_check -o ignore ssh "${SSH}" "sysctl net.inet.ip.forwarding=1"
     # Warm up connections, so that network discovery is complete.
-    atf_check -o ignore ping -c3 "$REMOTE_ADDR_1"
-    atf_check -o ignore ping -c3 "$REMOTE_ADDR_2"
-    atf_check -o ignore ping -c3 "$REMOTE_ADDR_3"
+    atf_check -o ignore ping -c3 "${REMOTE_ADDR_1}"
+    atf_check -o ignore ping -c3 "${REMOTE_ADDR_2}"
+    atf_check -o ignore ping -c3 "${REMOTE_ADDR_3}"
     # Run test.
     cd files &&
 	atf_check python2 scrub_forward.py &&
 	cd ..
 }
 remote_scrub_forward_cleanup () {
-    ssh "$SSH" "pfctl -dFa ;
-                sysctl net.inet.ip.forwarding=0"
+    ssh "${SSH}" "pfctl -dFa ;
+                  sysctl net.inet.ip.forwarding=0"
 }
 
 atf_test_case remote_scrub_forward6 cleanup
@@ -160,10 +171,11 @@ of two interfaces and test difference.'
 scrub_pflog_body () {
     pair_create 0 1
     rules="scrub in on ${PAIR_0_IF_A} all fragment reassemble
-           pass log (all, to ${PFLOG_IF}) on { ${PAIR_0_IF_A} ${PAIR_1_IF_A} }"
+           pass log (all to ${PFLOG_IF}) on { ${PAIR_0_IF_A} ${PAIR_1_IF_A} }"
     cd "$(atf_get_srcdir)"
     # Enable PF.
     atf_check kldload -n pf pflog
+    atf_check ifconfig pflog0 up
     echo "$rules" | atf_check -e ignore pfctl -ef -
     # Run test.
     cd files
@@ -171,6 +183,7 @@ scrub_pflog_body () {
 }
 scrub_pflog_cleanup () {
     pfctl -dFa
+    ifconfig pflog0 down
     kldunload -n pf pflog
     pair_destroy 0 1
 }
