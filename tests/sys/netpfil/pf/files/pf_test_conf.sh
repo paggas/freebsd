@@ -2,7 +2,9 @@
 # Keep the contents of the file in the form "var='val'" as below,
 # as this file will be read from python as well.
 
-SSH='root@192.168.0.2'
+ZROOT='zroot'
+
+SSH_0='root@192.168.0.2'
 
 LOCAL_IF_1='tap1'
 REMOTE_IF_1='vtnet1'

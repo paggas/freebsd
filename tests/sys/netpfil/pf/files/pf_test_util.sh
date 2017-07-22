@@ -1,6 +1,12 @@
-# You need to source pf_test_conf.sh before sourcing this file.
-#
 # Utility functions.
+
+. "$(atf_get_srcdir)/files/pf_test_conf.sh"
+
+PF_TEST_DIR="$(atf_get_srcdir)"
+export PF_TEST_DIR
+
+PATH="${PF_TEST_DIR}/files:${PATH}"
+export PATH
 
 pair_create () {
     for i in "$@" ; do
@@ -24,4 +30,10 @@ pair_destroy () {
 	ifpair="epair${i}"
 	ifconfig "${ifpair}a" destroy
     done
+}
+
+ssh_cmd () {
+    vm="${1}"
+    sshlogin="$(cat conf.${vm}.sshlogin)"
+    echo "ssh -i conf.${vm}.id_rsa ${sshlogin}"
 }

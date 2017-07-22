@@ -7,7 +7,6 @@
 # SSH root access to the test machine is required for the tests to
 # work.
 
-. "$(atf_get_srcdir)/files/pf_test_conf.sh"
 . "$(atf_get_srcdir)/files/pf_test_util.sh"
 
 # Starts two instances of nc on the remote machine, listening on two
@@ -23,19 +22,23 @@ remote_block_return_body () {
     block_port=50000
     pass_port=50001
     rules="block return in on ${REMOTE_IF_1} proto tcp to port ${block_port}"
-    atf_check ssh "${SSH}" "kldload -n pf"
-    echo "${rules}" | atf_check -e ignore ssh "${SSH}" "pfctl -ef -"
-    atf_check daemon -p nc.block.pid ssh "${SSH}" "nc -l ${block_port}"
-    atf_check daemon -p nc.pass.pid ssh "${SSH}" "nc -l ${pass_port}"
-    atf_check -s exit:1 -e empty  nc -z "${REMOTE_ADDR_1}" "${block_port}"
-    atf_check -s exit:0 -e ignore nc -z "${REMOTE_ADDR_1}" "${pass_port}"
+    atf_check vmctl.sh create client
+    atf_check vmctl.sh create server
+    atf_check $(ssh_cmd server) "kldload -n pf"
+    echo "${rules}" | atf_check -e ignore $(ssh_cmd server) "pfctl -ef -"
+    atf_check daemon -p nc.block.pid $(ssh_cmd server) "nc -l ${block_port}"
+    atf_check daemon -p nc.pass.pid $(ssh_cmd server) "nc -l ${pass_port}"
+    atf_check -s exit:1 -e empty $(ssh_cmd client) "nc -z ${REMOTE_ADDR_1} ${block_port}"
+    atf_check -s exit:0 -e ignore $(ssh_cmd client) "nc -z ${REMOTE_ADDR_1} ${pass_port}"
 }
 remote_block_return_cleanup () {
     [ -e nc.block.pid ] && kill "$(cat nc.block.pid)"
     [ -e nc.pass.pid ] && kill "$(cat nc.pass.pid)"
-    ssh "${SSH}" "pfctl -dFa ;
-                  kldunload -n pf ;
-		  true"
+    $(ssh_cmd server) "pfctl -dFa ;
+                       kldunload -n pf ;
+		       true"
+    vmctl.sh destroy client
+    vmctl.sh destroy server
 }
 
 atf_test_case remote_block_drop cleanup
@@ -47,11 +50,11 @@ remote_block_drop_body () {
     pass_port=50001
     rules="block drop in on ${REMOTE_IF_1} proto tcp to port ${block_port}"
     # Prepare PF.
-    atf_check ssh "${SSH}" "kldload -n pf"
-    echo "${rules}" | atf_check -e ignore ssh "${SSH}" "pfctl -ef -"
+    atf_check ssh "${SSH_0}" "kldload -n pf"
+    echo "${rules}" | atf_check -e ignore ssh "${SSH_0}" "pfctl -ef -"
     # Setup test listeners.
-    atf_check daemon -p nc.block.pid ssh "${SSH}" "nc -l ${block_port}"
-    atf_check daemon -p nc.pass.pid ssh "${SSH}" "nc -l ${pass_port}"
+    atf_check daemon -p nc.block.pid ssh "${SSH_0}" "nc -l ${block_port}"
+    atf_check daemon -p nc.pass.pid ssh "${SSH_0}" "nc -l ${pass_port}"
     # Run test.
     atf_check -s exit:1 -e empty nc -z -w 4 "${REMOTE_ADDR_1}" "${block_port}"
     atf_check -s exit:0 -e ignore nc -z "${REMOTE_ADDR_1}" "${pass_port}"
@@ -59,7 +62,7 @@ remote_block_drop_body () {
 remote_block_drop_cleanup () {
     [ -e nc.block.pid ] && kill "$(cat nc.block.pid)"
     [ -e nc.pass.pid ] && kill "$(cat nc.pass.pid)"
-    ssh "${SSH}" "pfctl -dFa ;
+    ssh "${SSH_0}" "pfctl -dFa ;
                	  kldunload -n pf ;
  		  true"
 }
@@ -81,20 +84,20 @@ remote_scrub_todo_body () {
     # files to be used in remote temporary directory: pflog.pcap
     rules="scrub in on $REMOTE_IF_1 all fragment reassemble
            pass log (all, to pflog0) on { $REMOTE_IF_1 $REMOTE_IF_2 }"
-    atf_check ssh "$SSH" 'kldload -n pf pflog'
-    echo "$rules" | atf_check -e ignore ssh "$SSH" 'pfctl -ef -'
-    atf_check -o save:tempdir.var ssh "$SSH" 'mktemp -dt pf_test.tmp'
+    atf_check ssh "$SSH_0" 'kldload -n pf pflog'
+    echo "$rules" | atf_check -e ignore ssh "$SSH_0" 'pfctl -ef -'
+    atf_check -o save:tempdir.var ssh "$SSH_0" 'mktemp -dt pf_test.tmp'
     #atf_check_equal 0 "$?"
     tempdir="$(cat tempdir.var)"
     timeout=5
-    atf_check daemon -p tcpdump.pid ssh "$SSH" \
+    atf_check daemon -p tcpdump.pid ssh "$SSH_0" \
 	   "timeout $timeout tcpdump -U -i pflog0 -w $tempdir/pflog.pcap"
     (cd "$(atf_get_srcdir)/files" &&
     	atf_check python2 scrub6.py sendonly)
     # Wait for tcpdump to pick up everything.
     atf_check sleep "$(expr "$timeout" + 2)"
     # Not sure if following will work with atf_check
-    atf_check scp "$SSH:$tempdir/pflog.pcap" ./
+    atf_check scp "$SSH_0:$tempdir/pflog.pcap" ./
     # TODO following will be removed when the test is complete, but
     # since processing isn't implemented yet, we just save the file
     # for now.
@@ -104,7 +107,7 @@ remote_scrub_todo_body () {
 remote_scrub_todo_cleanup () {
     kill "$(cat tcpdump.pid)"
     tempdir="$(cat tempdir.var)"
-    ssh "$SSH" "rm -r \"$tempdir\" ; pfctl -dFa"
+    ssh "$SSH_0" "rm -r \"$tempdir\" ; pfctl -dFa"
 }
 
 atf_test_case remote_scrub_forward cleanup
@@ -117,10 +120,10 @@ remote_scrub_forward_body () {
            pass log (all to pflog0) on { ${REMOTE_IF_1} ${REMOTE_IF_2} }"
     cd "$(atf_get_srcdir)"
     # Enable PF.
-    atf_check ssh "${SSH}" "kldload -n pf"
-    echo "${rules}" | atf_check -e ignore ssh "${SSH}" "pfctl -ef -"
+    atf_check ssh "${SSH_0}" "kldload -n pf"
+    echo "${rules}" | atf_check -e ignore ssh "${SSH_0}" "pfctl -ef -"
     # Enable forwarding.
-    atf_check -o ignore ssh "${SSH}" "sysctl net.inet.ip.forwarding=1"
+    atf_check -o ignore ssh "${SSH_0}" "sysctl net.inet.ip.forwarding=1"
     # Warm up connections, so that network discovery is complete.
     atf_check -o ignore ping -c3 "${REMOTE_ADDR_1}"
     atf_check -o ignore ping -c3 "${REMOTE_ADDR_2}"
@@ -131,7 +134,7 @@ remote_scrub_forward_body () {
 	cd ..
 }
 remote_scrub_forward_cleanup () {
-    ssh "${SSH}" "pfctl -dFa ;
+    ssh "${SSH_0}" "pfctl -dFa ;
                   sysctl net.inet.ip.forwarding=0"
 }
 
@@ -145,10 +148,10 @@ remote_scrub_forward6_body () {
            pass log (all, to pflog0) on { $REMOTE_IF_1 $REMOTE_IF_2 }"
     cd "$(atf_get_srcdir)"
     # Enable PF.
-    atf_check ssh "$SSH" kldload -n pf
-    echo "$rules" | atf_check -e ignore ssh "$SSH" pfctl -ef -
+    atf_check ssh "$SSH_0" kldload -n pf
+    echo "$rules" | atf_check -e ignore ssh "$SSH_0" pfctl -ef -
     # Enable forwarding.
-    atf_check -o ignore ssh "$SSH" sysctl net.inet6.ip6.forwarding=1
+    atf_check -o ignore ssh "$SSH_0" sysctl net.inet6.ip6.forwarding=1
     # Warm up connections, so that network discovery is complete.
     atf_check -o ignore ping6 -c3 "$REMOTE_ADDR6_1"
     atf_check -o ignore ping6 -c3 "$REMOTE_ADDR6_2"
@@ -159,7 +162,7 @@ remote_scrub_forward6_body () {
 	cd ..
 }
 remote_scrub_forward6_cleanup () {
-    ssh "$SSH" "pfctl -dFa ;
+    ssh "$SSH_0" "pfctl -dFa ;
                 sysctl net.inet6.ip6.forwarding=0"
 }
 
