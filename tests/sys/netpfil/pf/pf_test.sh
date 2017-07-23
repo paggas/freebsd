@@ -21,24 +21,57 @@ remote_block_return_head () {
 remote_block_return_body () {
     block_port=50000
     pass_port=50001
-    rules="block return in on ${REMOTE_IF_1} proto tcp to port ${block_port}"
-    atf_check vmctl.sh create client
-    atf_check vmctl.sh create server
-    atf_check $(ssh_cmd server) "kldload -n pf"
-    echo "${rules}" | atf_check -e ignore $(ssh_cmd server) "pfctl -ef -"
-    atf_check daemon -p nc.block.pid $(ssh_cmd server) "nc -l ${block_port}"
-    atf_check daemon -p nc.pass.pid $(ssh_cmd server) "nc -l ${pass_port}"
-    atf_check -s exit:1 -e empty $(ssh_cmd client) "nc -z ${REMOTE_ADDR_1} ${block_port}"
-    atf_check -s exit:0 -e ignore $(ssh_cmd client) "nc -z ${REMOTE_ADDR_1} ${pass_port}"
+    rules="block return in on vtnet1 proto tcp to port ${block_port}"
+    # Set up networking.
+    atf_check ifconfig tap19302 create inet 10.169.0.1/24 link0
+    atf_check ifconfig tap19303 create inet 10.169.1.1/24 link0
+    atf_check ifconfig tap19304 create inet 10.169.2.1/24 link0
+    atf_check ifconfig tap19305 create inet 10.169.3.1/24 link0
+    atf_check ifconfig bridge6555 create addm tap19303 addm tap19305
+    # Create VM configuration.
+    echo "\
+ifconfig_vtnet0=\"inet 10.169.0.2/24\"
+ifconfig_vtnet1=\"inet 10.169.1.2/24\"" > vmctl.client.rcappend
+    echo "\
+ifconfig_vtnet0=\"inet 10.169.2.2/24\"
+ifconfig_vtnet1=\"inet 10.169.3.2/24\"" > vmctl.server.rcappend
+    # Start VMs.
+    atf_check vmctl.sh create client "zroot/tests/pf" \
+	      /dev/nmdmtests-pf1B tap19302 tap19303
+    atf_check vmctl.sh create server "zroot/tests/pf" \
+	      /dev/nmdmtests-pf2B tap19304 tap19305
+    ssh_cmd_client="$(ssh_cmd client)"
+    ssh_cmd_server="$(ssh_cmd server)"
+    atf_check [ "x${ssh_cmd_client}" '!=' "x" ]
+    atf_check [ "x${ssh_cmd_server}" '!=' "x" ]
+    # Start pf.
+    atf_check ${ssh_cmd_server} "kldload -n pf"
+    echo "${rules}" | atf_check -e ignore ${ssh_cmd_server} "pfctl -ef -"
+    # Start test.
+    atf_check daemon -p nc.block.pid ${ssh_cmd_server} "nc -l ${block_port}"
+    atf_check daemon -p nc.pass.pid ${ssh_cmd_server} "nc -l ${pass_port}"
+    atf_check -s exit:1 -e empty ${ssh_cmd_client} \
+	      "nc -z ${REMOTE_ADDR_1} ${block_port}"
+    atf_check -s exit:0 -e ignore ${ssh_cmd_client} \
+	      "nc -z ${REMOTE_ADDR_1} ${pass_port}"
 }
 remote_block_return_cleanup () {
+    # Stop test.
     [ -e nc.block.pid ] && kill "$(cat nc.block.pid)"
     [ -e nc.pass.pid ] && kill "$(cat nc.pass.pid)"
-    $(ssh_cmd server) "pfctl -dFa ;
-                       kldunload -n pf ;
-		       true"
-    vmctl.sh destroy client
-    vmctl.sh destroy server
+    # # Stop pf.
+    # $(ssh_cmd server) "pfctl -dFa ;
+    #                    kldunload -n pf ;
+    # 		       true"
+    # Stop VMs.
+    vmctl.sh destroy client "zroot/tests/pf"
+    vmctl.sh destroy server "zroot/tests/pf"
+    # Tear down networking.
+    ifconfig bridge6555 destroy
+    ifconfig tap19302 destroy
+    ifconfig tap19303 destroy
+    ifconfig tap19304 destroy
+    ifconfig tap19305 destroy
 }
 
 atf_test_case remote_block_drop cleanup
@@ -49,7 +82,7 @@ remote_block_drop_body () {
     block_port=50000
     pass_port=50001
     rules="block drop in on ${REMOTE_IF_1} proto tcp to port ${block_port}"
-    # Prepare PF.
+    # Prepare pf.
     atf_check ssh "${SSH_0}" "kldload -n pf"
     echo "${rules}" | atf_check -e ignore ssh "${SSH_0}" "pfctl -ef -"
     # Setup test listeners.
@@ -119,7 +152,7 @@ remote_scrub_forward_body () {
     rules="scrub in on ${REMOTE_IF_1} all fragment reassemble
            pass log (all to pflog0) on { ${REMOTE_IF_1} ${REMOTE_IF_2} }"
     cd "$(atf_get_srcdir)"
-    # Enable PF.
+    # Enable pf.
     atf_check ssh "${SSH_0}" "kldload -n pf"
     echo "${rules}" | atf_check -e ignore ssh "${SSH_0}" "pfctl -ef -"
     # Enable forwarding.
@@ -147,7 +180,7 @@ remote_scrub_forward6_body () {
     rules="scrub in on $REMOTE_IF_1 all fragment reassemble
            pass log (all, to pflog0) on { $REMOTE_IF_1 $REMOTE_IF_2 }"
     cd "$(atf_get_srcdir)"
-    # Enable PF.
+    # Enable pf.
     atf_check ssh "$SSH_0" kldload -n pf
     echo "$rules" | atf_check -e ignore ssh "$SSH_0" pfctl -ef -
     # Enable forwarding.
@@ -176,7 +209,7 @@ scrub_pflog_body () {
     rules="scrub in on ${PAIR_0_IF_A} all fragment reassemble
            pass log (all to ${PFLOG_IF}) on { ${PAIR_0_IF_A} ${PAIR_1_IF_A} }"
     cd "$(atf_get_srcdir)"
-    # Enable PF.
+    # Enable pf.
     atf_check kldload -n pf pflog
     atf_check ifconfig pflog0 up
     echo "$rules" | atf_check -e ignore pfctl -ef -

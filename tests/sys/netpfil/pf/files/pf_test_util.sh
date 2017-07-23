@@ -33,7 +33,7 @@ pair_destroy () {
 }
 
 ssh_cmd () {
-    vm="${1}"
-    sshlogin="$(cat conf.${vm}.sshlogin)"
-    echo "ssh -i conf.${vm}.id_rsa ${sshlogin}"
+    vm="${1}" &&
+	sshlogin="$(cat vmctl.${vm}.sshlogin)" &&
+	echo "ssh -i vmctl.${vm}.id_rsa ${sshlogin}"
 }
