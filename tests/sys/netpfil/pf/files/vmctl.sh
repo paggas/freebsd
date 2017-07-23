@@ -21,7 +21,7 @@ Usage: ${0} \"create\" {vm} {zdir} {console} {if1 if2 ...}
 
 baseimg="${zdir}/baseimg"
 snap="${zdir}/baseimg@${vm}"
-vmimg="${zdir}/baseimg.${vm}"
+vmimg="${zdir}/vm.${vm}"
 mountdir="/mnt/tests/pf/vm.${vm}"
 
 # Make sure baseimg exists as a zvol.
@@ -35,7 +35,7 @@ make_baseimg () {
     size="$(stat -f '%z' ${imgfile})"
     # Round up to multiple of 16M.
     [ "$(expr ${size} % 16777216)" = 0 ] ||
-	{ size="$(expr \( \( $size / 16777216 \) + 1 \) \* 16777216)" ; }
+	size="$(expr \( \( $size / 16777216 \) + 1 \) \* 16777216)"
     zfs create -p -V "${size}" "${baseimg}" &&
 	dd bs=16M if="${imgfile}" of="/dev/zvol/${baseimg}"
     status="$?"
@@ -45,7 +45,7 @@ make_baseimg () {
 write_sshlogin () {
     addr="$(grep -E "ifconfig_.*inet.*[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+" \
                 "vmctl.${vm}.rcappend" |
-            sed -E "s/.*([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+).*/\1/" |
+            sed -E "s/.*[^0-9]([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+).*/\1/" |
             head -n 1)" &&
 	[ "x${addr}" '!=' "x" ] &&
 	echo "root@${addr}" > "vmctl.${vm}.sshlogin"
@@ -55,32 +55,39 @@ case "${cmd}" in
     (create)
 	# make -f "${PF_TEST_DIR}/files/vmctl.mk" \
 	#      "/dev/zvol/${zdir}/baseimg"
-	{ make_baseimg &&
-	      zfs snap "${snap}" &&
-	      zfs clone "${snap}" "${vmimg}" &&
-	      ssh-keygen -q -P '' -f "vmctl.${vm}.id_rsa" &&
-	      write_sshlogin &&
-	      mkdir -p "${mountdir}" &&
-	      mount "/dev/zvol/${vmimg}p3" "${mountdir}"; } || exit 1
+	{
+	    make_baseimg &&
+		zfs snap "${snap}" &&
+		zfs clone "${snap}" "${vmimg}" &&
+		ssh-keygen -q -P '' -f "vmctl.${vm}.id_rsa" &&
+		write_sshlogin &&
+		mkdir -p "${mountdir}" &&
+		mount "/dev/zvol/${vmimg}p3" "${mountdir}"
+	} || exit 1
 	mkdir -p "${mountdir}/root/.ssh" &&
 	    cat "vmctl.${vm}.id_rsa" >> \
 		"${mountdir}/root/.ssh/authorized_keys" &&
-	    echo "cloned_interfaces=\"${ifs}\"" >> \
+	    echo "PermitRootLogin without-password" >> \
+		 "${mountdir}/etc/ssh/sshd_config" &&
+	    echo "sshd_enable=\"YES\"" >> \
 		 "${mountdir}/etc/rc.conf" &&
 	    cat "vmctl.${vm}.rcappend" >> \
 		"${mountdir}/etc/rc.conf"
 	appendstatus="$?"
 	umount "${mountdir}" &&
 	    rmdir "${mountdir}" &&
-	    [ "x${appendstatus}" "!=" 'x0' ] &&
-	    { ifsopt=''
-	      for i in "${ifs}" ; do
-		  ifsopt="${ifsopt} -t ${ifs}" ; done
-	      daemon -p "vmctl.${vm}.pid" \
-		     sh /usr/share/examples/bhyve/vmrun.sh $ifsopt \
-		     -d "${vmimg}" -C "${console}" "${vm}" ; }
+	    [ "x${appendstatus}" = 'x0' ] && {
+		ifsopt=''
+		for i in ${ifs} ; do
+		    ifsopt="${ifsopt} -t ${i}" ; done
+		daemon -p "vmctl.${vm}.pid" \
+		       sh /usr/share/examples/bhyve/vmrun.sh ${ifsopt} \
+		       -d "/dev/zvol/${vmimg}" -C "${console}" \
+		       "tests-pf-${vm}"
+	    }
 	;;
     (destroy)
+	bhyvectl --destroy --vm="tests-pf-${vm}"
 	[ -e "vmctl.${vm}.pid" ] && kill "$(cat vmctl.${vm}.pid)"
 	rm "vmctl.${vm}.id_rsa" \
 	   "vmctl.${vm}.id_rsa.pub" \
