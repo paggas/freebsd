@@ -77,6 +77,13 @@ case "${cmd}" in
                  "${mountdir}/etc/rc.conf" || return 1
             cat "vmctl.${vm}.rcappend" >> \
                 "${mountdir}/etc/rc.conf" || return 1
+            # TODO Copy pf binary files from host to VM. Quick fix
+            # while we use official images, will do proper system
+            # installs in the future.
+            cp -a "/boot/kernel/pf.ko" \
+               "${mountdir}/boot/kernel/pf.ko" || return 1
+            cp -a "/sbin/pfctl" \
+               "${mountdir}/sbin/pfctl" || return 1
         )
         appendstatus="$?"
         umount "${mountdir}"
