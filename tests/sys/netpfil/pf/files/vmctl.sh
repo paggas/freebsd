@@ -31,9 +31,12 @@ make_baseimg () {
     (
         # Download image file.
         imgfile="${tempdir}/FreeBSD-11.0-RELEASE-amd64.raw"
-        fetch -o "${imgfile}.xz" \
-              "https://download.freebsd.org/ftp/releases/VM-IMAGES/11.0-RELEASE/amd64/Latest/FreeBSD-11.0-RELEASE-amd64.raw.xz" \
-            || return 1
+        # fetch -o "${imgfile}.xz" \
+        #       "https://download.freebsd.org/ftp/releases/VM-IMAGES/11.0-RELEASE/amd64/Latest/FreeBSD-11.0-RELEASE-amd64.raw.xz" \
+        #     || return 1
+        # TODO Use local copy of above for now.
+        cp -ai "/var/tmp/FreeBSD-11.0-RELEASE-amd64.raw.xz" \
+           "${imgfile}.xz" || return 1
         unxz "${imgfile}.xz" || return 1
         size="$(stat -f '%z' ${imgfile})"
         # Round up to multiple of 16M.
@@ -46,6 +49,17 @@ make_baseimg () {
     status="$?"
     rm -r "${tempdir}"
     return "${status}"
+}
+
+# Install system on VM.
+make_install () {
+    # TODO Copy pf binary files from host to VM.  Quick fix while we
+    # use official images, will do proper system installs in the
+    # future.
+    cp -a "/boot/kernel/pf.ko" \
+       "${mountdir}/boot/kernel/pf.ko" || return 1
+    cp -a "/sbin/pfctl" \
+       "${mountdir}/sbin/pfctl" || return 1
 }
 
 write_sshlogin () {
@@ -68,22 +82,18 @@ case "${cmd}" in
         mount "/dev/zvol/${vmimg}p3" "${mountdir}" || exit 1
         (
             make_install || return 1
-            mkdir -p "${mountdir}/root/.ssh" || return 1
-            cat "vmctl.${vm}.id_rsa" >> \
-                "${mountdir}/root/.ssh/authorized_keys" || return 1
+            (
+                umask 0177 || return 1
+                mkdir -p "${mountdir}/root/.ssh" || return 1
+                cat "vmctl.${vm}.id_rsa" >> \
+                    "${mountdir}/root/.ssh/authorized_keys"
+            ) || return 1
             echo "PermitRootLogin without-password" >> \
                  "${mountdir}/etc/ssh/sshd_config" || return 1
             echo "sshd_enable=\"YES\"" >> \
                  "${mountdir}/etc/rc.conf" || return 1
             cat "vmctl.${vm}.rcappend" >> \
                 "${mountdir}/etc/rc.conf" || return 1
-            # TODO Copy pf binary files from host to VM. Quick fix
-            # while we use official images, will do proper system
-            # installs in the future.
-            cp -a "/boot/kernel/pf.ko" \
-               "${mountdir}/boot/kernel/pf.ko" || return 1
-            cp -a "/sbin/pfctl" \
-               "${mountdir}/sbin/pfctl" || return 1
         )
         appendstatus="$?"
         umount "${mountdir}"
@@ -105,6 +115,9 @@ case "${cmd}" in
         rm "vmctl.${vm}.id_rsa" \
            "vmctl.${vm}.id_rsa.pub" \
            "vmctl.${vm}.sshlogin"
+        # TODO Sleep a bit before destroying dataset, so that it
+        # doesn't show up as "busy".
+        sleep 5
         zfs destroy -R "${snap}"
         ;;
     (*)
