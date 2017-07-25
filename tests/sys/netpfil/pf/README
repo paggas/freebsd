@@ -1,0 +1,45 @@
+FreeBSD test sute - pf
+======================
+
+(Current as of 20170725.)
+
+These tests use kyua and ATF.  They create and run VMs with bhyve, and
+use these machines to run various test scenarios.
+
+The tests assume that a ZFS storage pool exists on the system named
+"zroot", and use the subtree under "zroot/tests/pf" to clone and
+configure VM images to be used with bhyve.  The tests also assume that
+python with scapy is installed on the system, as many of the test
+scenarios use scapy for traffic generation and inspection.
+
+The main test script is pf_test, which cooperates with vmctl.sh for
+controlling VMs.  The main script takes care of network device
+allocation, address assignment, and VM naming, while the VM control
+script takes care of creating and configuring VM images and starting
+and stopping VMs.  These two scripts communicate via command line
+arguments and local files created in the ATF working directory.
+
+All VMs need at least one interface to run SSH on, and preferably more
+interfaces for running tests.  The VM control script vmctl.sh receives
+the list of interfaces from pf_test, configures them such that SSH is
+enabled on the first interface, and writes out login information in
+local files for pf_test to read back.
+
+When the VMs are up and runnning, The main script pf_test uses the SSH
+connections to make further configuration before the tests start.  It
+also takes care of wiring the VMs according to the test scenario,
+using local bridge interfaces.
+
+Typically, there will be two VMs, one running pf and one generating
+traffic.  Each VM will have two interfaces, one for running SSH and
+one for connecting to the other VM via a network bridge running on the
+host.  But more complicated scenarios than this can also be created.
+
+In the files/ directory exist various test scripts which can be
+uploaded to the VMs by pf_test.  The host itself, running pf_test and
+vmctl.sh, does not run any tests directly, that is it does not run
+pfctl, pf, or generate any traffic.  This is only done by the VMs.
+
+Tearing down and cleaning up after testing is done by pf_test, which
+delegates VM destruction to vmctl.sh and cleans up everything else by
+itself.
