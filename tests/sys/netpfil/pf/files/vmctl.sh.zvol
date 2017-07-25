@@ -24,22 +24,31 @@ snap="${zdir}/baseimg@${vm}"
 vmimg="${zdir}/vm.${vm}"
 mountdir="/mnt/tests/pf/vm.${vm}"
 
-# Make sure baseimg exists as a dataset.
+# Make sure baseimg exists as a zvol.
 make_baseimg () {
-    # Return with success immediately if mountpoint (and, by
-    # extension, the dataset) exists and contains the image file.
-    zmount="$(zfs get -H -o value mountpoint ${baseimg})" &&
-        [ -e "${zmount}/img" ] && return
-    zfs create -p "${baseimg}" || return 1
-    zmount="$(zfs get -H -o value mountpoint ${baseimg})" || return 1
-    # Download image file.
-    # fetch -o "${imgfile}.xz" \
-    #       "https://download.freebsd.org/ftp/releases/VM-IMAGES/11.0-RELEASE/amd64/Latest/FreeBSD-11.0-RELEASE-amd64.raw.xz" \
-    #     || return 1
-    # TODO Use local copy of above for now.
-    cp -ai "/var/tmp/FreeBSD-11.0-RELEASE-amd64.raw.xz" \
-       "${zmount}/img.xz" || return 1
-    unxz "${zmount}/img.xz" || return 1
+    [ -e "/dev/zvol/${baseimg}" ] && return
+    tempdir="$(mktemp -d)"
+    (
+        # Download image file.
+        imgfile="${tempdir}/FreeBSD-11.0-RELEASE-amd64.raw"
+        # fetch -o "${imgfile}.xz" \
+        #       "https://download.freebsd.org/ftp/releases/VM-IMAGES/11.0-RELEASE/amd64/Latest/FreeBSD-11.0-RELEASE-amd64.raw.xz" \
+        #     || return 1
+        # TODO Use local copy of above for now.
+        cp -ai "/var/tmp/FreeBSD-11.0-RELEASE-amd64.raw.xz" \
+           "${imgfile}.xz" || return 1
+        unxz "${imgfile}.xz" || return 1
+        size="$(stat -f '%z' ${imgfile})"
+        # Round up to multiple of 16M.
+        [ "$(expr ${size} % 16777216)" = 0 ] ||
+            size="$(expr \( \( $size / 16777216 \) + 1 \) \* 16777216)"
+        # Copy image file to zvol.
+        zfs create -p -V "${size}" "${baseimg}" || return 1
+        dd bs=16M if="${imgfile}" of="/dev/zvol/${baseimg}" || return 1
+    )
+    status="$?"
+    rm -r "${tempdir}"
+    return "${status}"
 }
 
 # Install system on VM.
@@ -70,29 +79,24 @@ case "${cmd}" in
         ssh-keygen -q -P '' -f "vmctl.${vm}.id_rsa" || exit 1
         write_sshlogin || exit 1
         mkdir -p "${mountdir}" || exit 1
-        zmount="$(zfs get -H -o value mountpoint ${baseimg})" || return 1
-        md="$(mdconfig ${zmount}/img)" || exit 1
+        mount "/dev/zvol/${vmimg}p3" "${mountdir}" || exit 1
         (
-            mount "/dev/${md}p3" "${mountdir}" || return 1
+            make_install || return 1
             (
-                make_install || return 1
-                (
-                    umask 0177 || return 1
-                    mkdir -p "${mountdir}/root/.ssh" || return 1
-                    cat "vmctl.${vm}.id_rsa" >> \
-                        "${mountdir}/root/.ssh/authorized_keys"
-                ) || return 1
-                echo "PermitRootLogin without-password" >> \
-                     "${mountdir}/etc/ssh/sshd_config" || return 1
-                echo "sshd_enable=\"YES\"" >> \
-                     "${mountdir}/etc/rc.conf" || return 1
-                cat "vmctl.${vm}.rcappend" >> \
-                    "${mountdir}/etc/rc.conf" || return 1
-            )
-            appendstatus="$?"
-            umount "${mountdir}"
+                umask 0177 || return 1
+                mkdir -p "${mountdir}/root/.ssh" || return 1
+                cat "vmctl.${vm}.id_rsa" >> \
+                    "${mountdir}/root/.ssh/authorized_keys"
+            ) || return 1
+            echo "PermitRootLogin without-password" >> \
+                 "${mountdir}/etc/ssh/sshd_config" || return 1
+            echo "sshd_enable=\"YES\"" >> \
+                 "${mountdir}/etc/rc.conf" || return 1
+            cat "vmctl.${vm}.rcappend" >> \
+                "${mountdir}/etc/rc.conf" || return 1
         )
-        mdconfig -du "${md}"
+        appendstatus="$?"
+        umount "${mountdir}"
         rmdir "${mountdir}"
         [ "x${appendstatus}" = 'x0' ] || return 1
         (
@@ -101,7 +105,7 @@ case "${cmd}" in
                 ifsopt="${ifsopt} -t ${i}" ; done
             daemon -p "vmctl.${vm}.pid" \
                    sh /usr/share/examples/bhyve/vmrun.sh ${ifsopt} \
-                   -d "${zmount}/img" -C "${console}" \
+                   -d "/dev/zvol/${vmimg}" -C "${console}" \
                    "tests-pf-${vm}"
         )
         ;;
