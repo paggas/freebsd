@@ -36,16 +36,18 @@ ifconfig_vtnet1=\"inet 10.169.1.2/24\"" > vmctl.client.rcappend
 ifconfig_vtnet0=\"inet 10.169.2.2/24\"
 ifconfig_vtnet1=\"inet 10.169.3.2/24\"" > vmctl.server.rcappend
     # Start VMs.
-    atf_check vmctl.sh create client "zroot/tests/pf" \
+    atf_check -e ignore \
+              vmctl.sh create client "zroot/tests/pf" \
 	      /dev/nmdmtests-pf1B tap19302 tap19303
-    atf_check vmctl.sh create server "zroot/tests/pf" \
+    atf_check -e ignore \
+              vmctl.sh create server "zroot/tests/pf" \
 	      /dev/nmdmtests-pf2B tap19304 tap19305
     ssh_cmd_client="$(ssh_cmd client)"
     ssh_cmd_server="$(ssh_cmd server)"
     atf_check [ "x${ssh_cmd_client}" '!=' "x" ]
     atf_check [ "x${ssh_cmd_server}" '!=' "x" ]
     # Debug
-    sleep 60
+    sleep 900
     # Start pf.
     atf_check ${ssh_cmd_server} "kldload -n pf"
     echo "${rules}" | atf_check -e ignore ${ssh_cmd_server} "pfctl -ef -"
