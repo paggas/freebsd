@@ -47,7 +47,10 @@ ifconfig_vtnet1=\"inet 10.169.3.2/24\"" > vmctl.server.rcappend
     atf_check [ "x${ssh_cmd_client}" '!=' "x" ]
     atf_check [ "x${ssh_cmd_server}" '!=' "x" ]
     # Debug
-    sleep 900
+    atf_check sleep 900
+    # Wait for VMs to start up and for their SSH deamons to start
+    # listening.
+    atf_check sleep 60
     # Start pf.
     atf_check ${ssh_cmd_server} "kldload -n pf"
     echo "${rules}" | atf_check -e ignore ${ssh_cmd_server} "pfctl -ef -"

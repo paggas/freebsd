@@ -35,6 +35,6 @@ pair_destroy () {
 ssh_cmd () {
     vm="${1}" &&
 	sshlogin="$(cat vmctl.${vm}.sshlogin)" &&
-	echo "ssh -o StrictHostKeyChecking=no \
+	echo "ssh -q -o StrictHostKeyChecking=no \
 -i vmctl.${vm}.id_rsa ${sshlogin}"
 }

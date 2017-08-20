@@ -32,18 +32,19 @@ debug () {
 make_baseimg () {
     # Return with success immediately if mountpoint (and, by
     # extension, the dataset) exists and contains the image file.
-    zmount="$(zfs get -H -o value mountpoint ${baseimg})" &&
-        [ -e "${zmount}/img" ] && return
+    zmountbase="$(zfs get -H -o value mountpoint ${baseimg})" &&
+        [ -e "${zmountbase}/img" ] && return
     zfs create -p "${baseimg}" || return 1
-    zmount="$(zfs get -H -o value mountpoint ${baseimg})" || return 1
+    zmountbase="$(zfs get -H -o value mountpoint ${baseimg})" || return 1
     # Download image file.
     # fetch -o "${imgfile}.xz" \
     #       "https://download.freebsd.org/ftp/releases/VM-IMAGES/11.0-RELEASE/amd64/Latest/FreeBSD-11.0-RELEASE-amd64.raw.xz" \
     #     || return 1
     # TODO Use local copy of above for now.
-    cp -ai "/var/tmp/FreeBSD-11.0-RELEASE-amd64.raw.xz" \
-       "${zmount}/img.xz" || return 1
-    unxz "${zmount}/img.xz" || return 1
+    # cp -ai "/var/tmp/FreeBSD-11.0-RELEASE-amd64.raw.xz" \
+    #    "${zmountbase}/img.xz" || return 1
+    cp -ai "/usr/obj/usr/home/paggas/paggas.freebsd/release/vm-bbbb.raw" \
+       "${zmountbase}/img" || return 1
 }
 
 # Install system on VM.
@@ -75,20 +76,22 @@ case "${cmd}" in
         ssh-keygen -q -P '' -f "vmctl.${vm}.id_rsa" || exit 1
         write_sshlogin || exit 1
         mkdir -p "${mountdir}" || exit 1
-        zmount="$(zfs get -H -o value mountpoint ${baseimg})" || return 1
-        md="$(mdconfig ${zmount}/img)" || exit 1
+        zmountvm="$(zfs get -H -o value mountpoint ${vmimg})" || return 1
+        md="$(mdconfig ${zmountvm}/img)" || exit 1
         (
             mount "/dev/${md}p3" "${mountdir}" || return 1
             (
                 make_install || return 1
                 (
-                    umask 0177 || return 1
+                    umask 077 || return 1
                     mkdir -p "${mountdir}/root/.ssh" || return 1
-                    cat "vmctl.${vm}.id_rsa" >> \
+                    cat "vmctl.${vm}.id_rsa.pub" >> \
                         "${mountdir}/root/.ssh/authorized_keys"
                 ) || return 1
-                echo "PermitRootLogin without-password" >> \
-                     "${mountdir}/etc/ssh/sshd_config" || return 1
+                (
+                    echo "PermitRootLogin without-password" ;
+                    echo "StrictModes no" ;
+                ) >> "${mountdir}/etc/ssh/sshd_config" || return 1
                 echo "sshd_enable=\"YES\"" >> \
                      "${mountdir}/etc/rc.conf" || return 1
                 cat "vmctl.${vm}.rcappend" >> \
@@ -112,7 +115,7 @@ case "${cmd}" in
             debug "ifsopt: ${ifsopt}"
             daemon -p "vmctl.${vm}.pid" \
                    sh /usr/share/examples/bhyve/vmrun.sh ${ifsopt} \
-                   -d "${zmount}/img" -C "${console}" \
+                   -d "${zmountvm}/img" -C "${console}" \
                    "tests-pf-${vm}"
             sleep 5 # TODO debug only
             ls -la '/dev/vmm' >&2
