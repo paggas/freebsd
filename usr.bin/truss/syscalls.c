@@ -45,6 +45,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/ptrace.h>
 #include <sys/resource.h>
 #include <sys/socket.h>
+#define _WANT_FREEBSD11_STAT
 #include <sys/stat.h>
 #include <sys/un.h>
 #include <sys/wait.h>
@@ -57,6 +58,7 @@ __FBSDID("$FreeBSD$");
 #include <err.h>
 #include <fcntl.h>
 #include <poll.h>
+#include <sched.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -144,6 +146,15 @@ static struct syscall decoded_syscalls[] = {
 	  .args = { { Int, 0 }, { Timespec | OUT, 1 } } },
 	{ .name = "close", .ret_type = 1, .nargs = 1,
 	  .args = { { Int, 0 } } },
+	{ .name = "compat11.fstat", .ret_type = 1, .nargs = 2,
+	  .args = { { Int, 0 }, { Stat11 | OUT, 1 } } },
+	{ .name = "compat11.fstatat", .ret_type = 1, .nargs = 4,
+	  .args = { { Atfd, 0 }, { Name | IN, 1 }, { Stat11 | OUT, 2 },
+		    { Atflags, 3 } } },
+	{ .name = "compat11.lstat", .ret_type = 1, .nargs = 2,
+	  .args = { { Name | IN, 0 }, { Stat11 | OUT, 1 } } },
+	{ .name = "compat11.stat", .ret_type = 1, .nargs = 2,
+	  .args = { { Name | IN, 0 }, { Stat11 | OUT, 1 } } },
 	{ .name = "connect", .ret_type = 1, .nargs = 3,
 	  .args = { { Int, 0 }, { Sockaddr | IN, 1 }, { Socklent, 2 } } },
 	{ .name = "connectat", .ret_type = 1, .nargs = 4,
@@ -395,6 +406,20 @@ static struct syscall decoded_syscalls[] = {
 	  .args = { { Rtpriofunc, 0 }, { Int, 1 }, { Ptr, 2 } } },
 	{ .name = "rtprio_thread", .ret_type = 1, .nargs = 3,
 	  .args = { { Rtpriofunc, 0 }, { Int, 1 }, { Ptr, 2 } } },
+	{ .name = "sched_get_priority_max", .ret_type = 1, .nargs = 1,
+	  .args = { { Schedpolicy, 0 } } },
+	{ .name = "sched_get_priority_min", .ret_type = 1, .nargs = 1,
+	  .args = { { Schedpolicy, 0 } } },
+	{ .name = "sched_getparam", .ret_type = 1, .nargs = 2,
+	  .args = { { Int, 0 }, { Schedparam | OUT, 1 } } },
+	{ .name = "sched_getscheduler", .ret_type = 1, .nargs = 1,
+	  .args = { { Int, 0 } } },
+	{ .name = "sched_rr_get_interval", .ret_type = 1, .nargs = 2,
+	  .args = { { Int, 0 }, { Timespec | OUT, 1 } } },
+	{ .name = "sched_setparam", .ret_type = 1, .nargs = 2,
+	  .args = { { Int, 0 }, { Schedparam, 1 } } },
+	{ .name = "sched_setscheduler", .ret_type = 1, .nargs = 3,
+	  .args = { { Int, 0 }, { Schedpolicy, 1 }, { Schedparam, 2 } } },
 	{ .name = "sctp_generic_recvmsg", .ret_type = 1, .nargs = 7,
 	  .args = { { Int, 0 }, { Ptr | IN, 1 }, { Int, 2 },
 	            { Sockaddr | OUT, 3 }, { Ptr | OUT, 4 }, { Ptr | OUT, 5 },
@@ -582,8 +607,6 @@ static struct syscall decoded_syscalls[] = {
 	  .args = { { Ptr, 0 }, { CloudABIMFlags, 1 } } },
 	{ .name = "cloudabi_sys_mem_advise", .ret_type = 1, .nargs = 3,
 	  .args = { { Ptr, 0 }, { Int, 1 }, { CloudABIAdvice, 2 } } },
-	{ .name = "cloudabi_sys_mem_lock", .ret_type = 1, .nargs = 2,
-	  .args = { { Ptr, 0 }, { Int, 1 } } },
 	{ .name = "cloudabi_sys_mem_map", .ret_type = 1, .nargs = 6,
 	  .args = { { Ptr, 0 }, { Int, 1 }, { CloudABIMProt, 2 },
 	            { CloudABIMFlags, 3 }, { Int, 4 }, { Int, 5 } } },
@@ -591,8 +614,6 @@ static struct syscall decoded_syscalls[] = {
 	  .args = { { Ptr, 0 }, { Int, 1 }, { CloudABIMProt, 2 } } },
 	{ .name = "cloudabi_sys_mem_sync", .ret_type = 1, .nargs = 3,
 	  .args = { { Ptr, 0 }, { Int, 1 }, { CloudABIMSFlags, 2 } } },
-	{ .name = "cloudabi_sys_mem_unlock", .ret_type = 1, .nargs = 2,
-	  .args = { { Ptr, 0 }, { Int, 1 } } },
 	{ .name = "cloudabi_sys_mem_unmap", .ret_type = 1, .nargs = 2,
 	  .args = { { Ptr, 0 }, { Int, 1 } } },
 	{ .name = "cloudabi_sys_proc_exec", .ret_type = 1, .nargs = 5,
@@ -771,8 +792,8 @@ static struct xlat cloudabi_filetype[] = {
 	X(FILETYPE_CHARACTER_DEVICE) X(FILETYPE_DIRECTORY)
 	X(FILETYPE_FIFO) X(FILETYPE_POLL) X(FILETYPE_PROCESS)
 	X(FILETYPE_REGULAR_FILE) X(FILETYPE_SHARED_MEMORY)
-	X(FILETYPE_SOCKET_DGRAM) X(FILETYPE_SOCKET_SEQPACKET)
-	X(FILETYPE_SOCKET_STREAM) X(FILETYPE_SYMBOLIC_LINK)
+	X(FILETYPE_SOCKET_DGRAM) X(FILETYPE_SOCKET_STREAM)
+	X(FILETYPE_SYMBOLIC_LINK)
 	XEND
 };
 
@@ -799,11 +820,6 @@ static struct xlat cloudabi_msflags[] = {
 
 static struct xlat cloudabi_oflags[] = {
 	X(O_CREAT) X(O_DIRECTORY) X(O_EXCL) X(O_TRUNC)
-	XEND
-};
-
-static struct xlat cloudabi_sa_family[] = {
-	X(AF_UNSPEC) X(AF_INET) X(AF_INET6) X(AF_UNIX)
 	XEND
 };
 
@@ -1240,7 +1256,7 @@ print_kevent(FILE *fp, struct kevent *ke, int input)
 	default:
 		fprintf(fp, "%#x", ke->fflags);
 	}
-	fprintf(fp, ",%p,%p", (void *)ke->data, (void *)ke->udata);
+	fprintf(fp, ",%#jx,%p", (uintmax_t)ke->data, ke->udata);
 }
 
 static void
@@ -1870,6 +1886,23 @@ print_arg(struct syscall_args *sc, unsigned long *args, long *retval,
 		}
 		break;
 	}
+	case Stat11: {
+		struct freebsd11_stat st;
+
+		if (get_struct(pid, (void *)args[sc->offset], &st, sizeof(st))
+		    != -1) {
+			char mode[12];
+
+			strmode(st.st_mode, mode);
+			fprintf(fp,
+			    "{ mode=%s,inode=%ju,size=%jd,blksize=%ld }", mode,
+			    (uintmax_t)st.st_ino, (intmax_t)st.st_size,
+			    (long)st.st_blksize);
+		} else {
+			fprintf(fp, "0x%lx", args[sc->offset]);
+		}
+		break;
+	}
 	case StatFs: {
 		unsigned int i;
 		struct statfs buf;
@@ -2155,6 +2188,20 @@ print_arg(struct syscall_args *sc, unsigned long *args, long *retval,
 		print_integer_arg(sysdecode_rtprio_function, fp,
 		    args[sc->offset]);
 		break;
+	case Schedpolicy:
+		print_integer_arg(sysdecode_scheduler_policy, fp,
+		    args[sc->offset]);
+		break;
+	case Schedparam: {
+		struct sched_param sp;
+
+		if (get_struct(pid, (void *)args[sc->offset], &sp,
+		    sizeof(sp)) != -1)
+			fprintf(fp, "{ %d }", sp.sched_priority);
+		else
+			fprintf(fp, "0x%lx", args[sc->offset]);
+		break;
+	}
 
 	case CloudABIAdvice:
 		fputs(xlookup(cloudabi_advice, args[sc->offset]), fp);
@@ -2223,10 +2270,6 @@ print_arg(struct syscall_args *sc, unsigned long *args, long *retval,
 		cloudabi_sockstat_t ss;
 		if (get_struct(pid, (void *)args[sc->offset], &ss, sizeof(ss))
 		    != -1) {
-			fprintf(fp, "{ %s, ", xlookup(
-			    cloudabi_sa_family, ss.ss_sockname.sa_family));
-			fprintf(fp, "%s, ", xlookup(
-			    cloudabi_sa_family, ss.ss_peername.sa_family));
 			fprintf(fp, "%s, ", xlookup(
 			    cloudabi_errno, ss.ss_error));
 			fprintf(fp, "%s }", xlookup_bits(

@@ -1,3 +1,4 @@
+# $FreeBSD$
 # Make will add a #! line at the top of this file.
 
 # Tests 0001-0999 are copied from OpenBSD's regress/sbin/pfctl.
