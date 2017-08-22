@@ -90,25 +90,70 @@ remote_block_drop_head () {
     atf_set descr 'Block-with-drop a port and test that it is blocked.'
 }
 remote_block_drop_body () {
-    block_port=50000
-    pass_port=50001
-    rules="block drop in on ${REMOTE_IF_1} proto tcp to port ${block_port}"
-    # Prepare pf.
-    atf_check ssh "${SSH_0}" "kldload -n pf"
-    echo "${rules}" | atf_check -e ignore ssh "${SSH_0}" "pfctl -ef -"
-    # Setup test listeners.
-    atf_check daemon -p nc.block.pid ssh "${SSH_0}" "nc -l ${block_port}"
-    atf_check daemon -p nc.pass.pid ssh "${SSH_0}" "nc -l ${pass_port}"
-    # Run test.
-    atf_check -s exit:1 -e empty nc -z -w 4 "${REMOTE_ADDR_1}" "${block_port}"
-    atf_check -s exit:0 -e ignore nc -z "${REMOTE_ADDR_1}" "${pass_port}"
+    block_port="50000"
+    pass_port="50001"
+    rules="block drop in on vtnet1 proto tcp to port ${block_port}"
+    # Set up networking.
+    atf_check ifconfig tap19302 create inet 10.135.213.1/28 link0 # client vtnet0
+    atf_check ifconfig tap19303 create inet 10.135.213.33/28 link0 # client vtnet1
+    atf_check ifconfig tap19304 create inet 10.135.213.17/28 link0 # server vtnet0
+    atf_check ifconfig tap19305 create inet 10.135.213.34/28 link0 # server vtnet1
+    atf_check ifconfig bridge6555 create
+    atf_check ifconfig bridge6555 addm tap19303 addm tap19305
+    atf_check ifconfig bridge6555 stp tap19303 stp tap19305
+    atf_check ifconfig bridge6555 up
+    # Create VM configuration.
+    echo "\
+ifconfig_vtnet0=\"inet 10.135.213.2/28\"
+ifconfig_vtnet1=\"inet 10.135.213.35/28\"" > vmctl.client.rcappend
+    echo "\
+ifconfig_vtnet0=\"inet 10.135.213.18/28\"
+ifconfig_vtnet1=\"inet 10.135.213.36/28\"" > vmctl.server.rcappend
+    # Start VMs.
+    atf_check -e ignore \
+              vmctl.sh create client "zroot/tests/pf" \
+              /dev/nmdmtests-pf1B tap19302 tap19303
+    atf_check -e ignore \
+              vmctl.sh create server "zroot/tests/pf" \
+              /dev/nmdmtests-pf2B tap19304 tap19305
+    ssh_cmd_client="$(ssh_cmd client)"
+    ssh_cmd_server="$(ssh_cmd server)"
+    atf_check [ "x${ssh_cmd_client}" '!=' "x" ]
+    atf_check [ "x${ssh_cmd_server}" '!=' "x" ]
+    # Debug
+    #atf_check sleep 900
+    # Wait for VMs to start up and for their SSH deamons to start
+    # listening.
+    atf_check sleep 60
+    # Start pf.
+    atf_check ${ssh_cmd_server} "kldload -n pf"
+    echo "${rules}" | atf_check -e ignore ${ssh_cmd_server} "pfctl -ef -"
+    # Start test.
+    atf_check daemon -p nc.block.pid ${ssh_cmd_server} "nc -l ${block_port}"
+    atf_check daemon -p nc.pass.pid ${ssh_cmd_server} "nc -l ${pass_port}"
+    remote_addr_1="10.135.213.36"
+    atf_check -s exit:1 -e empty ${ssh_cmd_client} \
+              "nc -z -w 4 ${remote_addr_1} ${block_port}"
+    atf_check -s exit:0 -e ignore ${ssh_cmd_client} \
+              "nc -z ${remote_addr_1} ${pass_port}"
 }
 remote_block_drop_cleanup () {
+    # Stop test.
     [ -e nc.block.pid ] && kill "$(cat nc.block.pid)"
     [ -e nc.pass.pid ] && kill "$(cat nc.pass.pid)"
-    ssh "${SSH_0}" "pfctl -dFa ;
-               	  kldunload -n pf ;
- 		  true"
+    # # Stop pf.
+    # $(ssh_cmd server) "pfctl -dFa ;
+    #                    kldunload -n pf ;
+    # 		       true"
+    # Stop VMs.
+    vmctl.sh destroy client "zroot/tests/pf"
+    vmctl.sh destroy server "zroot/tests/pf"
+    # Tear down networking.
+    ifconfig bridge6555 destroy
+    ifconfig tap19302 destroy
+    ifconfig tap19303 destroy
+    ifconfig tap19304 destroy
+    ifconfig tap19305 destroy
 }
 
 # This test uses 2 interfaces to connect to the test machine,
