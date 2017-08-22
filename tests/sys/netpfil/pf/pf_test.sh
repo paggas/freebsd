@@ -19,35 +19,38 @@ remote_block_return_head () {
     atf_set descr 'Block-with-return a port and test that it is blocked.'
 }
 remote_block_return_body () {
-    block_port=50000
-    pass_port=50001
+    block_port="50000"
+    pass_port="50001"
     rules="block return in on vtnet1 proto tcp to port ${block_port}"
     # Set up networking.
-    atf_check ifconfig tap19302 create inet 10.169.0.1/24 link0
-    atf_check ifconfig tap19303 create inet 10.169.1.1/24 link0
-    atf_check ifconfig tap19304 create inet 10.169.2.1/24 link0
-    atf_check ifconfig tap19305 create inet 10.169.3.1/24 link0
-    atf_check ifconfig bridge6555 create addm tap19303 addm tap19305
+    atf_check ifconfig tap19302 create inet 10.135.213.1/28 link0 # client vtnet0
+    atf_check ifconfig tap19303 create inet 10.135.213.33/28 link0 # client vtnet1
+    atf_check ifconfig tap19304 create inet 10.135.213.17/28 link0 # server vtnet0
+    atf_check ifconfig tap19305 create inet 10.135.213.34/28 link0 # server vtnet1
+    atf_check ifconfig bridge6555 create
+    atf_check ifconfig bridge6555 addm tap19303 addm tap19305
+    atf_check ifconfig bridge6555 stp tap19303 stp tap19305
+    atf_check ifconfig bridge6555 up
     # Create VM configuration.
     echo "\
-ifconfig_vtnet0=\"inet 10.169.0.2/24\"
-ifconfig_vtnet1=\"inet 10.169.1.2/24\"" > vmctl.client.rcappend
+ifconfig_vtnet0=\"inet 10.135.213.2/28\"
+ifconfig_vtnet1=\"inet 10.135.213.35/28\"" > vmctl.client.rcappend
     echo "\
-ifconfig_vtnet0=\"inet 10.169.2.2/24\"
-ifconfig_vtnet1=\"inet 10.169.3.2/24\"" > vmctl.server.rcappend
+ifconfig_vtnet0=\"inet 10.135.213.18/28\"
+ifconfig_vtnet1=\"inet 10.135.213.36/28\"" > vmctl.server.rcappend
     # Start VMs.
     atf_check -e ignore \
               vmctl.sh create client "zroot/tests/pf" \
-	      /dev/nmdmtests-pf1B tap19302 tap19303
+              /dev/nmdmtests-pf1B tap19302 tap19303
     atf_check -e ignore \
               vmctl.sh create server "zroot/tests/pf" \
-	      /dev/nmdmtests-pf2B tap19304 tap19305
+              /dev/nmdmtests-pf2B tap19304 tap19305
     ssh_cmd_client="$(ssh_cmd client)"
     ssh_cmd_server="$(ssh_cmd server)"
     atf_check [ "x${ssh_cmd_client}" '!=' "x" ]
     atf_check [ "x${ssh_cmd_server}" '!=' "x" ]
     # Debug
-    atf_check sleep 900
+    #atf_check sleep 900
     # Wait for VMs to start up and for their SSH deamons to start
     # listening.
     atf_check sleep 60
@@ -57,10 +60,11 @@ ifconfig_vtnet1=\"inet 10.169.3.2/24\"" > vmctl.server.rcappend
     # Start test.
     atf_check daemon -p nc.block.pid ${ssh_cmd_server} "nc -l ${block_port}"
     atf_check daemon -p nc.pass.pid ${ssh_cmd_server} "nc -l ${pass_port}"
+    remote_addr_1="10.135.213.36"
     atf_check -s exit:1 -e empty ${ssh_cmd_client} \
-	      "nc -z ${REMOTE_ADDR_1} ${block_port}"
+              "nc -z ${remote_addr_1} ${block_port}"
     atf_check -s exit:0 -e ignore ${ssh_cmd_client} \
-	      "nc -z ${REMOTE_ADDR_1} ${pass_port}"
+              "nc -z ${remote_addr_1} ${pass_port}"
 }
 remote_block_return_cleanup () {
     # Stop test.

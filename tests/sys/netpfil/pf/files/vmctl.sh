@@ -43,7 +43,7 @@ make_baseimg () {
     # TODO Use local copy of above for now.
     # cp -ai "/var/tmp/FreeBSD-11.0-RELEASE-amd64.raw.xz" \
     #    "${zmountbase}/img.xz" || return 1
-    cp -ai "/usr/obj/usr/home/paggas/paggas.freebsd/release/vm-bbbb.raw" \
+    cp -ai "/usr/obj/usr/home/paggas/paggas.freebsd/release/vm-cccc.raw" \
        "${zmountbase}/img" || return 1
 }
 
