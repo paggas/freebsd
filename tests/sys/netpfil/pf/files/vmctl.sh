@@ -8,6 +8,12 @@
 # first interface specified in the ${ifs} list is the one for which
 # SSH is setup.
 
+debug () {
+    echo "DEBUG: vmctl: (vm=$vm) $@" >&2
+}
+
+debug "command line: $@"
+
 cmd="${1}"
 vm="${2}"
 zdir="${3}"
@@ -29,13 +35,14 @@ debug () {
 }
 
 # Make sure baseimg exists as a dataset.
-make_baseimg () {
+check_baseimg () {
     # Return with success immediately if mountpoint (and, by
     # extension, the dataset) exists and contains the image file.
     zmountbase="$(zfs get -H -o value mountpoint ${baseimg})" &&
         [ -e "${zmountbase}/img" ] && return
-    zfs create -p "${baseimg}" || return 1
-    zmountbase="$(zfs get -H -o value mountpoint ${baseimg})" || return 1
+    return 1
+    #zfs create -p "${baseimg}" || return 1
+    #zmountbase="$(zfs get -H -o value mountpoint ${baseimg})" || return 1
     # Download image file.
     # fetch -o "${imgfile}.xz" \
     #       "https://download.freebsd.org/ftp/releases/VM-IMAGES/11.0-RELEASE/amd64/Latest/FreeBSD-11.0-RELEASE-amd64.raw.xz" \
@@ -43,8 +50,9 @@ make_baseimg () {
     # TODO Use local copy of above for now.
     # cp -ai "/var/tmp/FreeBSD-11.0-RELEASE-amd64.raw.xz" \
     #    "${zmountbase}/img.xz" || return 1
-    cp -ai "/usr/obj/usr/home/paggas/paggas.freebsd/release/vm-cccc.raw" \
-       "${zmountbase}/img" || return 1
+    #cp -ai "/usr/obj/usr/home/paggas/paggas.freebsd/release/vm-cccc.raw" \
+    #   "${zmountbase}/img" || return 1
+    # TODO Install scapy on image.
 }
 
 # Install system on VM.
@@ -70,7 +78,7 @@ write_sshlogin () {
 debug 'begin'
 case "${cmd}" in
     (create)
-        make_baseimg || exit 1
+        check_baseimg || exit 1
         zfs snap "${snap}" || exit 1
         zfs clone "${snap}" "${vmimg}" || exit 1
         ssh-keygen -q -P '' -f "vmctl.${vm}.id_rsa" || exit 1

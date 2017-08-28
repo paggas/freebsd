@@ -38,3 +38,40 @@ ssh_cmd () {
 	echo "ssh -q -o StrictHostKeyChecking=no \
 -i vmctl.${vm}.id_rsa ${sshlogin}"
 }
+
+tap_create () {
+    vm="${1}"
+    tap="${2}"
+    tap_inet="${3}"
+    vtnet="${4}"
+    vtnet_inet="${5}"
+    atf_check ifconfig "${tap}" create inet "${tap_inet}" link0
+    echo "ifconfig_${vtnet}=\"inet ${vtnet_inet}\"" >> "vmctl.${vm}.rcappend"
+}
+
+bridge_create () {
+    iface="${1}"
+    shift 1 || atf_fail "bridge_create"
+    atf_check ifconfig "${iface}" create
+    for i in "$@" ; do
+        atf_check ifconfig "${iface}" addm "${i}"
+        atf_check ifconfig "${iface}" stp "${i}"
+    done
+    atf_check ifconfig "${iface}" up
+}
+
+vm_create () {
+    vm="${1}"
+    shift 1 || atf_fail "vm_create"
+    # Rest of arguments is network (tap) interfaces.
+    atf_check -e ignore \
+              vmctl.sh create "${vm}" "zroot/tests/pf" \
+              "/dev/nmdmtests-pf-${vm}B" "$@"
+    ssh_cmd_vm="$(ssh_cmd ${vm})"
+    atf_check [ "x${ssh_cmd_vm}" '!=' "x" ]
+}
+
+vm_destroy () {
+    vm="${1}"
+    vmctl.sh destroy "${vm}" "zroot/tests/pf"
+}
