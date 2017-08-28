@@ -234,6 +234,8 @@ DIRDEPS= \
       tests/sys/mac/portacl \
       tests/sys/mqueue \
       tests/sys/netinet \
+      tests/sys/netpfil \
+      tests/sys/netpfil/pf \
       tests/sys/opencrypto \
       tests/sys/pjdfstest/tests \
       tests/sys/pjdfstest/tests/chflags \
