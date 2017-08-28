@@ -12,7 +12,7 @@ debug () {
     echo "DEBUG: vmctl: (vm=$vm) $@" >&2
 }
 
-debug "command line: $@"
+#debug "command line: $@"
 
 cmd="${1}"
 vm="${2}"
@@ -29,10 +29,6 @@ baseimg="${zdir}/baseimg"
 snap="${zdir}/baseimg@${vm}"
 vmimg="${zdir}/vm.${vm}"
 mountdir="/mnt/tests/pf/vm.${vm}"
-
-debug () {
-    echo "DEBUG: vmctl: (vm=$vm) $@" >&2
-}
 
 # Make sure baseimg exists as a dataset.
 check_baseimg () {
@@ -75,7 +71,7 @@ write_sshlogin () {
     echo "root@${addr}" > "vmctl.${vm}.sshlogin" || return 1
 }
 
-debug 'begin'
+#debug 'begin'
 case "${cmd}" in
     (create)
         check_baseimg || exit 1
@@ -104,29 +100,29 @@ case "${cmd}" in
                      "${mountdir}/etc/rc.conf" || return 1
                 cat "vmctl.${vm}.rcappend" >> \
                     "${mountdir}/etc/rc.conf" || return 1
-                debug 'all append good'
+                #debug 'all append good'
             )
             appendstatus="$?"
-            debug "appendstatus in: ${appendstatus}"
+            #debug "appendstatus in: ${appendstatus}"
             umount "${mountdir}"
             return "${appendstatus}"
         )
         appendstatus="$?"
         mdconfig -du "${md}"
         rmdir "${mountdir}"
-        debug "appendstatus out: ${appendstatus}"
+        #debug "appendstatus out: ${appendstatus}"
         [ "x${appendstatus}" = 'x0' ] || return 1
         (
             ifsopt=''
             for i in ${ifs} ; do
                 ifsopt="${ifsopt} -t ${i}" ; done
-            debug "ifsopt: ${ifsopt}"
+            #debug "ifsopt: ${ifsopt}"
             daemon -p "vmctl.${vm}.pid" \
                    sh /usr/share/examples/bhyve/vmrun.sh ${ifsopt} \
                    -d "${zmountvm}/img" -C "${console}" \
                    "tests-pf-${vm}"
             sleep 5 # TODO debug only
-            ls -la '/dev/vmm' >&2
+            #ls -la '/dev/vmm' >&2
         )
         ;;
     (destroy)
@@ -147,5 +143,5 @@ case "${cmd}" in
 esac
 
 status="$?"
-debug "status: ${status}"
+#debug "status: ${status}"
 exit "${status}"
