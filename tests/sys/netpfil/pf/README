@@ -1,23 +1,145 @@
 FreeBSD test sute - pf
 ======================
 
-(Current as of 20170725.)
+(Current as of 20170828.)
 
 These tests use kyua and ATF.  They create and run VMs with bhyve, and
 use these machines to run various test scenarios.
 
-The tests assume that a ZFS storage pool exists on the system named
-"zroot", and use the subtree under "zroot/tests/pf" to clone and
-configure VM images to be used with bhyve.  The tests also assume that
-python with scapy is installed on the system, as many of the test
-scenarios use scapy for traffic generation and inspection.
 
-The main test script is pf_test, which cooperates with vmctl.sh for
-controlling VMs.  The main script takes care of network device
-allocation, address assignment, and VM naming, while the VM control
-script takes care of creating and configuring VM images and starting
-and stopping VMs.  These two scripts communicate via command line
-arguments and local files created in the ATF working directory.
+Requirements
+------------
+
+The test require that the host supports bhyve and the following
+modules:
+
+* bridgestp - for bridge networking for inter-virtual machine
+  communication
+* if_bridge - for bridge networking
+* if_tap - for host-to-virtual machine communication
+* nmdm - for virtual serial consoles
+* vmm - for running virtual machines
+* zfs - for creating and cloning virtual machine images
+
+The tests require that a ZFS storage pool exists on the system named
+"zroot", and use the subtree under "zroot/tests/pf" to clone and
+configure VM images to be used with bhyve.
+
+The tests also require an active internet connection, as required
+packages are installed during creation of the virtual machine base
+image, as many of the test scenarios use scapy for traffic generation
+and inspection.
+
+
+Names and numbers used
+----------------------
+
+The following names and numbers have been chosed for use in the tests,
+as a way to avoid collisions with other installed packages on the host
+system:
+
+* Bhyve guests: all virtual machine as named as tests-pf-*
+* Bridge interfaces: bridge6555 to bridge6558
+* File system: the mountpoint of ZFS dataset "zroot/tests/pf" is used
+* IPv4 addresses: block 10.135.213.0/24 is used
+* Installation location: /usr/tests/sys/netpfil/pf
+* Tap interfaces: tap19302 to tap19317
+* Virtual consoles: /dev/nmdmtests-pf-*[AB]
+
+
+Required packages
+-----------------
+
+The following packages are automatically installed on the virtual
+machine base image.  No packages are installed on the host machine.
+
+* python2.7
+* scapy
+
+
+Installation
+------------
+
+The tests are shipped as part of the FreeBSD source.  They are
+installed as part of the FreeBSD test suite, which is installed by
+default when installing FreeBSD from source starting with version 11.
+To install the tests manually:
+
+    % cd {sourcedir} (/usr/src or other)
+    % cd tests/netpfil/pf
+    % make
+    # make install (as root)
+
+The tests should appear under /usr/tests/sys/netpfil/pf.  If not,
+creating the directory hierarchy manually might be needed:
+
+    # mkdir -p /usr/tests/sys/netpfil/pf (as root)
+
+The hierarchy is created automatically when the tests are installed as
+part of the complete test suite, which is recommended.
+
+
+First time preparation
+----------------------
+
+Before being able to run any tests, the virtual machine base image
+needs to be created.  To do that, as root:
+
+    # /usr/tests/sys/netpfil/pf/files/make_baseimg.sh {sourcedir}
+
+{sourcedir} can be /usr/src or anywhere the FreeBSD source is
+installed.
+
+make_baseimg.sh will rebuild world and kernel and create a FreeBSD
+ready-to-run image.  It will then create a ZFS dataset under "zroot"
+named "zroot/tests/pf" and copy the image there for the tests to be
+able to find.
+
+
+Running tests
+-------------
+
+The tests use kyua and ATF, and the usual administration commands work
+here as well.  To run the tests, first:
+
+    % cd /usr/tests/sys/netpfil/pf
+
+Then, to list all available tests:
+
+    % kyua list
+
+To run all the tests:
+
+    % kyua test
+
+To run a specific test:
+
+    % kyua test {desired_test}
+
+Note that only one test can be run at a time!  That is because the
+tests use the same names for creating virtual machines, and running
+multiple tests in parallel will create a collision.  Running all the
+tests as above will run them one by one, so that will not create any
+problem.
+
+
+Architecture of the tests
+-------------------------
+
+The tests use the test frameworks kyua and ATF, so every execution of
+a test gets its own empty temporary working directory, which is
+cleaned up afterwards by the test framework.  The tests have also
+access to the "source directory", which is the installation directory
+where the kyua command is issued.  This directory is used for reading
+configuration and running helper scripts and functions.
+
+The main test script is pf_test, which is run by the framwork.  This
+script cooperates with the VM control script vmctl.sh via utility
+functions in pf_test_util.sh.  The main script takes care of network
+device allocation, address assignment, and VM naming, while the VM
+control script takes care of creating and configuring VM images and
+starting and stopping VMs.  These two scripts communicate via command
+line arguments and local files created in the ATF working directory.
 
 All VMs need at least one interface to run SSH on, and preferably more
 interfaces for running tests.  The VM control script vmctl.sh receives
@@ -25,7 +147,12 @@ the list of interfaces from pf_test, configures them such that SSH is
 enabled on the first interface, and writes out login information in
 local files for pf_test to read back.
 
-When the VMs are up and runnning, The main script pf_test uses the SSH
+Before running any of the tests, the virtual machine base image needs
+to be created.  It is placed in the "zroot/tests/pf" ZFS dataset,
+making it easy for the tests to find.  This image is cloned by the
+control script every time a test is run.
+
+When the VMs are up and runnning, the main script pf_test uses the SSH
 connections to make further configuration before the tests start.  It
 also takes care of wiring the VMs according to the test scenario,
 using local bridge interfaces.
@@ -35,9 +162,11 @@ traffic.  Each VM will have two interfaces, one for running SSH and
 one for connecting to the other VM via a network bridge running on the
 host.  But more complicated scenarios than this can also be created.
 
-In the files/ directory exist various test scripts which can be
-uploaded to the VMs by pf_test.  The host itself, running pf_test and
-vmctl.sh, does not run any tests directly, that is it does not run
+In the installation directory, under files/, various test scripts
+exist, written in Python and using scapy, which can be uploaded to the
+VMs by pf_test.  The test scripts usually need configuration, which is
+also uploaded to the VMs by pf_test.  The host itself, running pf_test
+and vmctl.sh, does not run any tests directly, that is it does not run
 pfctl, pf, or generate any traffic.  This is only done by the VMs.
 
 Tearing down and cleaning up after testing is done by pf_test, which

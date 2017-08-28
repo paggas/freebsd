@@ -46,7 +46,7 @@ md="$(mdconfig ${zmountbase}/img)" || exit 1
     (
         chroot "${mountdir}" \
                env ASSUME_ALWAYS_YES="yes" \
-               pkg install scapy || return 1
+               pkg install "python2.7" "scapy" || return 1
     )
     status="$?"
     umount "${mountdir}"

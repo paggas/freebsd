@@ -100,6 +100,11 @@ case "${cmd}" in
                      "${mountdir}/etc/rc.conf" || return 1
                 cat "vmctl.${vm}.rcappend" >> \
                     "${mountdir}/etc/rc.conf" || return 1
+                # Test
+                # echo "ifconfig vtnet0 ether 02:00:00:00:00:01" >> \
+                #      "${mountdir}/etc/start_if.vtnet0" || return 1
+                # echo "ifconfig vtnet1 ether 02:00:00:00:00:02" >> \
+                #      "${mountdir}/etc/start_if.vtnet1" || return 1
                 #debug 'all append good'
             )
             appendstatus="$?"
