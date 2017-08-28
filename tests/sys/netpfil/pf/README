@@ -1,5 +1,5 @@
-FreeBSD test sute - pf
-======================
+FreeBSD test suite - pf
+=======================
 
 (Current as of 20170828.)
 
@@ -133,7 +133,12 @@ access to the "source directory", which is the installation directory
 where the kyua command is issued.  This directory is used for reading
 configuration and running helper scripts and functions.
 
-The main test script is pf_test, which is run by the framwork.  This
+Before running any of the tests, the virtual machine base image needs
+to be created.  It is placed in the "zroot/tests/pf" ZFS dataset,
+making it easy for the tests to find.  This image is cloned by the
+control script every time a test is run.
+
+The main test script is pf_test, which is run by the framework.  This
 script cooperates with the VM control script vmctl.sh via utility
 functions in pf_test_util.sh.  The main script takes care of network
 device allocation, address assignment, and VM naming, while the VM
@@ -147,10 +152,11 @@ the list of interfaces from pf_test, configures them such that SSH is
 enabled on the first interface, and writes out login information in
 local files for pf_test to read back.
 
-Before running any of the tests, the virtual machine base image needs
-to be created.  It is placed in the "zroot/tests/pf" ZFS dataset,
-making it easy for the tests to find.  This image is cloned by the
-control script every time a test is run.
+The pf_test script needs to wait for the VMs to boot up and get ready.
+This takes between 60 and 120 seconds, and depends on various factors
+such as the number of network interfaces for the VM.  To work around
+this, there is currently a hardcoded call to sleep(1) for each
+individual test.
 
 When the VMs are up and runnning, the main script pf_test uses the SSH
 connections to make further configuration before the tests start.  It
@@ -172,3 +178,25 @@ pfctl, pf, or generate any traffic.  This is only done by the VMs.
 Tearing down and cleaning up after testing is done by pf_test, which
 delegates VM destruction to vmctl.sh and cleans up everything else by
 itself.
+
+
+Future work
+-----------
+
+Below are some areas of improvement for the pf tests:
+
+* Ability to run multiple tests simultaneously: The main issue is
+  naming of the virtual machines, but other issues might also need
+  attention.
+
+* Start-up of virtual machines: Currently the tests wait for a
+  predefined amount of time, hardcoded as a call to sleep(1), until
+  the virtual machines are done booting.  A way to directly check the
+  status of a virtual machine would be desirable.  Perhaps by reading
+  from the virtual console?
+
+* Ease of creating new tests: Currently there is a lot of boilerplate
+  code when creating a test (in the body and cleanup function of the
+  test).  A way to simplify this would be desirable.  Perhaps create a
+  set of main test cases holding default configuration, that can be
+  branched off and modified?
