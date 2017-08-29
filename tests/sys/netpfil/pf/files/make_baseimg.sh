@@ -21,8 +21,8 @@ baseimg="zroot/tests/pf/baseimg"
 mountdir="/mnt/tests/pf/baseimg"
 
 cd "${sourcedir}" || exit 1
-make -j "${ncpu}" buildworld || exit 1
-make -j "${ncpu}" buildkernel || exit 1
+#make -j "${ncpu}" buildworld || exit 1
+#make -j "${ncpu}" buildkernel || exit 1
 
 cd release || exit 1
 # TODO Instead of make clean, use an alternative target directory.
