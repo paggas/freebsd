@@ -26,11 +26,14 @@ cd "${sourcedir}" || exit 1
 
 cd release || exit 1
 # TODO Instead of make clean, use an alternative target directory.
-make clean || exit 1
+#make clean || exit 1
 
 sourcedir_canon="$(readlink -f ${sourcedir})"
 
-rm -r "/usr/obj${sourcedir_canon}/release" # force rebuilding by make release
+# Force rebuilding by make release.
+chflags -R noschg "/usr/obj${sourcedir_canon}/release" || exit 1
+rm -fr "/usr/obj${sourcedir_canon}/release" || exit 1
+
 make release || exit 1
 make vm-image \
      WITH_VMIMAGES="1" VMBASE="vm-tests-pf" \
