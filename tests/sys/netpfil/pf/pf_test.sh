@@ -9,11 +9,11 @@
 
 . "$(atf_get_srcdir)/files/pf_test_util.sh"
 
-# Starts two instances of nc on the remote machine, listening on two
-# different ports, of which one port is blocked-with-return by the
-# remote pf.  The test tries then to connect to the two instances from
-# the local machine.  The test succeeds if one connection succeeds but
-# the other one fails.
+# Starts two virtual machines, the client and the server.  Starts two
+# instances of nc on the server, listening on two different ports, of
+# which one port is blocked-with-return by pf.  The client tries then
+# to connect to the two instances.  The test succeeds if one
+# connection succeeds but the other one fails.
 atf_test_case remote_block_return cleanup
 remote_block_return_head () {
     atf_set descr 'Block-with-return a port and test that it is blocked.'
@@ -67,6 +67,15 @@ remote_block_return_cleanup () {
     ifconfig tap19305 destroy
 }
 
+# Starts two virtual machines, the client and the server.  Starts two
+# instances of nc on the server, listening on two different ports, of
+# which one port is blocked-with-drop by pf.  The client tries then
+# to connect to the two instances.  The test succeeds if one
+# connection succeeds but the other one fails.
+#
+# This test is almost the same as remote_block_return, with the
+# difference that filtered packets are dropped instead of returned
+# (ICMP or RST packet returned).
 atf_test_case remote_block_drop cleanup
 remote_block_drop_head () {
     atf_set descr 'Block-with-drop a port and test that it is blocked.'
@@ -163,6 +172,16 @@ remote_block_drop_cleanup () {
 #     ssh "$SSH_0" "rm -r \"$tempdir\" ; pfctl -dFa"
 # }
 
+# This test starts two virtual machines, the client and the server.
+# It uses scapy to send IPv4 fragmented traffic from the client
+# machine to the server machine.  The machines are connected via three
+# interfaces.  The client sents traffic to the server via the first
+# two interfaces with the client itself as the destination, which the
+# server forwards via the third interface back to the client.  Scrub
+# is activated on the first but not the second interface on the server
+# pf.  By examining the forwarded packets as received on the client,
+# we can verify that reassembly occurs on one but not the other
+# interface.
 atf_test_case remote_scrub_forward cleanup
 remote_scrub_forward_head () {
     atf_set descr 'Scrub defrag with forward on one \
@@ -222,7 +241,7 @@ REMOTE_ADDR_3='10.135.213.68'
 LOCAL_IF_1='vtnet1'
 LOCAL_IF_2='vtnet2'
 LOCAL_IF_3='vtnet3'" \
-            | $(ssh_cmd client) "cat >> /root/conf.py"
+            | $(ssh_cmd client) "cat > /root/conf.py"
     ) || atf_fail "Upload conf.py"
     # Run test.
     atf_check -o ignore $(ssh_cmd client) "cd /root && ${PYTHON2} test.py"
@@ -245,6 +264,17 @@ remote_scrub_forward_cleanup () {
     ifconfig tap19309 destroy
 }
 
+# This test starts two virtual machines, the client and the server.
+# It uses scapy to send IPv6 fragmented traffic from the client
+# machine to the server machine.  The machines are connected via three
+# interfaces.  The client sents traffic to the server via the first
+# two interfaces with the client itself as the destination, which the
+# server forwards via the third interface back to the client.  Scrub
+# is activated on the first but not the second interface on the server
+# pf.  Tcpdump is run on pflog on the server, capturing traffic in a
+# pcap file, which is copied back to the client for examination.  By
+# examining the captured packets, we can verify that reassembly occurs
+# on one but not the other interface.
 atf_test_case remote_scrub_forward6 cleanup
 remote_scrub_forward6_head () {
     atf_set descr 'Scrub defrag with forward on one \
@@ -252,7 +282,7 @@ of two interfaces and test difference, IPv6 version.'
 }
 remote_scrub_forward6_body () {
     rules="scrub in on vtnet1 all fragment reassemble
-           pass log (all, to pflog0) on { vtnet1 vtnet2 }"
+           pass log (all to pflog0) on { vtnet1 vtnet2 }"
     # Set up networking.
     # Need at least one IPv4 interface per VM for SSH autoconf.
     tap_create client tap19302 10.135.213.1/28 vtnet0 10.135.213.2/28
@@ -285,10 +315,10 @@ remote_scrub_forward6_body () {
     # Debug
     #atf_check sleep 900
     # Start pf.
-    atf_check $(ssh_cmd server) "kldload -n pf"
+    atf_check $(ssh_cmd server) "kldload -n pf pflog"
     echo "${rules}" | atf_check -e ignore $(ssh_cmd server) "pfctl -ef -"
     # Enable forwarding.
-    atf_check -o ignore $(ssh_cmd server) "sysctl net.inet.ip.forwarding=1"
+    atf_check -o ignore $(ssh_cmd server) "sysctl net.inet6.ip6.forwarding=1"
     # Warm up connections, so that network discovery is complete.
     atf_check -o ignore $(ssh_cmd client) "ping6 -c3 fd22:27ca:58fe:2::3"
     atf_check -o ignore $(ssh_cmd client) "ping6 -c3 fd22:27ca:58fe:3::3"
@@ -315,10 +345,24 @@ REMOTE_ADDR6_3='fd22:27ca:58fe:4::3'
 LOCAL_IF_1='vtnet1'
 LOCAL_IF_2='vtnet2'
 LOCAL_IF_3='vtnet3'" \
-            | $(ssh_cmd client) "cat >> /root/conf.py"
+            | $(ssh_cmd client) "cat > /root/conf.py"
     ) || atf_fail "Upload conf.py"
     # Run test.
-    atf_check -o ignore $(ssh_cmd client) "cd /root && ${PYTHON2} test.py"
+    # Run tcpdump for 15 seconds.
+    atf_check daemon -p tcpdump.pid $(ssh_cmd server) \
+              "cd /root && tcpdump -G 15 -W 1 -i pflog0 -w pflog.pcap"
+    atf_check sleep 2
+    atf_check -o ignore $(ssh_cmd client) \
+              "cd /root && ${PYTHON2} test.py sendonly"
+    # Wait for tcpdump to finish.
+    atf_check sleep 15
+    #atf_check kill "$(cat tcpdump.pid)"
+    $(ssh_cmd server) "cat /root/pflog.pcap" > "pflog.pcap" ||
+        atf_fail "Download pflog.pcap"
+    $(ssh_cmd client) "cat > /root/pflog.pcap" < "pflog.pcap" ||
+        atf_fail "Upload pflog.pcap"
+    atf_check -o ignore $(ssh_cmd client) \
+              "cd /root && ${PYTHON2} test.py testresult"
 }
 remote_scrub_forward6_cleanup () {
     # Stop VMs.
@@ -338,30 +382,30 @@ remote_scrub_forward6_cleanup () {
     ifconfig tap19309 destroy
 }
 
-atf_test_case scrub_pflog cleanup
-scrub_pflog_head () {
-    atf_set descr 'Scrub defrag with pflog on one \
-of two interfaces and test difference.'
-}
-scrub_pflog_body () {
-    pair_create 0 1
-    rules="scrub in on ${PAIR_0_IF_A} all fragment reassemble
-           pass log (all to ${PFLOG_IF}) on { ${PAIR_0_IF_A} ${PAIR_1_IF_A} }"
-    cd "$(atf_get_srcdir)"
-    # Enable pf.
-    atf_check kldload -n pf pflog
-    atf_check ifconfig pflog0 up
-    echo "$rules" | atf_check -e ignore pfctl -ef -
-    # Run test.
-    cd files
-    atf_check python2 scrub_pflog.py
-}
-scrub_pflog_cleanup () {
-    pfctl -dFa
-    ifconfig pflog0 down
-    kldunload -n pf pflog
-    pair_destroy 0 1
-}
+# atf_test_case scrub_pflog cleanup
+# scrub_pflog_head () {
+#     atf_set descr 'Scrub defrag with pflog on one \
+# of two interfaces and test difference.'
+# }
+# scrub_pflog_body () {
+#     pair_create 0 1
+#     rules="scrub in on ${PAIR_0_IF_A} all fragment reassemble
+#            pass log (all to ${PFLOG_IF}) on { ${PAIR_0_IF_A} ${PAIR_1_IF_A} }"
+#     cd "$(atf_get_srcdir)"
+#     # Enable pf.
+#     atf_check kldload -n pf pflog
+#     atf_check ifconfig pflog0 up
+#     echo "$rules" | atf_check -e ignore pfctl -ef -
+#     # Run test.
+#     cd files
+#     atf_check python2 scrub_pflog.py
+# }
+# scrub_pflog_cleanup () {
+#     pfctl -dFa
+#     ifconfig pflog0 down
+#     kldunload -n pf pflog
+#     pair_destroy 0 1
+# }
 
 atf_init_test_cases () {
     atf_add_test_case remote_block_return
@@ -369,5 +413,5 @@ atf_init_test_cases () {
     #atf_add_test_case remote_scrub_todo
     atf_add_test_case remote_scrub_forward
     atf_add_test_case remote_scrub_forward6
-    atf_add_test_case scrub_pflog
+    #atf_add_test_case scrub_pflog
 }
