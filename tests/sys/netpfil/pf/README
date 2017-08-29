@@ -42,6 +42,7 @@ system:
 * Bridge interfaces: bridge6555 to bridge6558
 * File system: the mountpoint of ZFS dataset "zroot/tests/pf" is used
 * IPv4 addresses: block 10.135.213.0/24 is used
+* IPv6 addresses: block fd22:27ca:58fe::/48 is used
 * Installation location: /usr/tests/sys/netpfil/pf
 * Tap interfaces: tap19302 to tap19317
 * Virtual consoles: /dev/nmdmtests-pf-*[AB]

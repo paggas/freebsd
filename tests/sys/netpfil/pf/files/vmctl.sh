@@ -51,23 +51,26 @@ check_baseimg () {
     # TODO Install scapy on image.
 }
 
-# Install system on VM.
-make_install () {
-    # TODO Copy pf binary files from host to VM.  Quick fix while we
-    # use official images, will do proper system installs in the
-    # future.
-    cp -a "/boot/kernel/pf.ko" \
-       "${mountdir}/boot/kernel/pf.ko" || return 1
-    cp -a "/sbin/pfctl" \
-       "${mountdir}/sbin/pfctl" || return 1
-}
+# # Install system on VM.
+# make_install () {
+#     # TODO Copy pf binary files from host to VM.  Quick fix while we
+#     # use official images, will do proper system installs in the
+#     # future.
+#     cp -a "/boot/kernel/pf.ko" \
+#        "${mountdir}/boot/kernel/pf.ko" || return 1
+#     cp -a "/sbin/pfctl" \
+#        "${mountdir}/sbin/pfctl" || return 1
+# }
 
 write_sshlogin () {
     addr="$(grep -E "ifconfig_.*inet.*[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+" \
                 "vmctl.${vm}.rcappend" |
             sed -E "s/.*[^0-9]([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+).*/\1/" |
-            head -n 1)" || return 1
-    [ "x${addr}" '!=' "x" ] || return 1
+            head -n 1)" &&
+        [ "x${addr}" '!=' "x" ] || (
+            echo "${0}: write_sshlogin: no IPv4 address found." >&2
+            return 1
+        ) || return 1
     echo "root@${addr}" > "vmctl.${vm}.sshlogin" || return 1
 }
 
@@ -85,7 +88,7 @@ case "${cmd}" in
         (
             mount "/dev/${md}p3" "${mountdir}" || return 1
             (
-                make_install || return 1
+                #make_install || return 1
                 (
                     umask 077 || return 1
                     mkdir -p "${mountdir}/root/.ssh" || return 1

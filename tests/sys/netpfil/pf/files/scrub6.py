@@ -28,13 +28,13 @@ def sendpackets():
     sp.sendp(sp.fragment6(tofrag2, 400), iface=conf.LOCAL_IF_2, verbose=False)
 
 if len(sys.argv) < 2:
-    exit('No command given')
+    exit('%s: No command given.' % sys.argv[0])
 
 if sys.argv[1] == 'sendonly':
     sendpackets()
     exit()
 else:
-    exit('Bad command: %s' % repr(sys.argv[1]))
+    exit('%s: Bad command: %s.' % (sys.argv[0], repr(sys.argv[1])))
 
 # Following sniff-and-reassembly code kept for future usage.
 

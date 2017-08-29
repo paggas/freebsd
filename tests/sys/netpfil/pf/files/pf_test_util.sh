@@ -53,7 +53,7 @@ ssh_cmd () {
 # }
 
 # tap_create - configure tap interface on host machine with matching
-# vtnet interface on virtual machine.
+#              vtnet interface on virtual machine.
 tap_create () {
     vm="${1}"
     tap="${2}"
@@ -62,6 +62,21 @@ tap_create () {
     vtnet_inet="${5}"
     atf_check ifconfig "${tap}" create inet "${tap_inet}" link0
     echo "ifconfig_${vtnet}=\"inet ${vtnet_inet}\"" >> "vmctl.${vm}.rcappend"
+}
+
+# tap6_create - configure tap interface on host machine with matching
+#               vtnet interface on virtual machine, IPv6 version.
+tap6_create () {
+    vm="${1}"
+    tap="${2}"
+    tap_inet6="${3}"
+    vtnet="${4}"
+    vtnet_inet6="${5}"
+    atf_check ifconfig "${tap}" create inet6 "${tap_inet6}" link0
+    (
+        echo "ifconfig_${vtnet}=\"inet 0.0.0.0/8\""
+        echo "ifconfig_${vtnet}_ipv6=\"inet6 ${vtnet_inet6}\""
+    ) >> "vmctl.${vm}.rcappend"
 }
 
 # bridge_create - create bridge interface for communication between
