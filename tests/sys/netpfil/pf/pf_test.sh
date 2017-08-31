@@ -17,6 +17,7 @@
 atf_test_case remote_block_return cleanup
 remote_block_return_head () {
     atf_set descr 'Block-with-return a port and test that it is blocked.'
+    atf_set "require.user" "root"
 }
 remote_block_return_body () {
     block_port="50000"
@@ -79,6 +80,7 @@ remote_block_return_cleanup () {
 atf_test_case remote_block_drop cleanup
 remote_block_drop_head () {
     atf_set descr 'Block-with-drop a port and test that it is blocked.'
+    atf_set "require.user" "root"
 }
 remote_block_drop_body () {
     block_port="50000"
@@ -186,6 +188,7 @@ atf_test_case remote_scrub_forward cleanup
 remote_scrub_forward_head () {
     atf_set descr 'Scrub defrag with forward on one \
 of two interfaces and test difference.'
+    atf_set "require.user" "root"
 }
 remote_scrub_forward_body () {
     rules="scrub in on vtnet1 all fragment reassemble
@@ -279,6 +282,7 @@ atf_test_case remote_scrub_forward6 cleanup
 remote_scrub_forward6_head () {
     atf_set descr 'Scrub defrag with forward on one \
 of two interfaces and test difference, IPv6 version.'
+    atf_set "require.user" "root"
 }
 remote_scrub_forward6_body () {
     rules="scrub in on vtnet1 all fragment reassemble
