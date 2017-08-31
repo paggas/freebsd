@@ -7,6 +7,7 @@ BINDIR=		${TESTSDIR}
 
 ATF_TESTS_SH=	pf_test
 
-SUBDIR+=	files
+${PACKAGE}FILES+=	README
+SUBDIR+=		files
 
 .include <bsd.test.mk>
