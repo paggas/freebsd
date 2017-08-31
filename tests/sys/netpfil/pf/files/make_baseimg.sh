@@ -8,6 +8,8 @@
 #
 # make_baseimg.sh should be run as root.
 
+name="make_baseimg.sh"
+
 # Change this to point to the source directory.
 sourcedir="${1}"
 
@@ -17,7 +19,7 @@ sourcedir="${1}"
 }
 
 error () {
-	echo "${0}: ${1}" >&2
+	echo "${name}: ${1}" >&2
 }
 
 error_exit () {

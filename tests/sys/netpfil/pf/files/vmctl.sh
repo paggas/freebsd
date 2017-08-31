@@ -13,12 +13,14 @@
 # - 1 on error other than VM not starting.
 # - 2 on VM not starting.
 
+name="vmctl.sh"
+
 debug () {
     echo "DEBUG: vmctl: (vm=$vm) $@" >&2
 }
 
 error () {
-    echo "${0}: ${1}" >&2
+    echo "${name}: ${1}" >&2
 }
 
 error_exit () {
