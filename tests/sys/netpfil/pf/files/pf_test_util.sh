@@ -41,10 +41,13 @@ export PATH
 
 # ssh_cmd - print SSH command for connecting to virtual machine.
 ssh_cmd () {
-    vm="${1}" &&
-	sshlogin="$(cat vmctl.${vm}.sshlogin)" &&
+	vm="${1}"
+	sshlogin="$(cat vmctl.${vm}.sshlogin)" || {
+		echo "Could not read SSH login info for VM ${vm}!" >&2
+		return 1
+	}
 	echo "ssh -q -o StrictHostKeyChecking=no \
--i vmctl.${vm}.id_rsa ${sshlogin}"
+	      -i vmctl.${vm}.id_rsa ${sshlogin}"
 }
 
 # ssh_login () {
@@ -55,91 +58,91 @@ ssh_cmd () {
 # tap_create - configure tap interface on host machine with matching
 #              vtnet interface on virtual machine.
 tap_create () {
-    vm="${1}"
-    tap="${2}"
-    tap_inet="${3}"
-    vtnet="${4}"
-    vtnet_inet="${5}"
-    atf_check ifconfig "${tap}" create inet "${tap_inet}" link0
-    echo "ifconfig_${vtnet}=\"inet ${vtnet_inet}\"" >> "vmctl.${vm}.rcappend"
+	vm="${1}"
+	tap="${2}"
+	tap_inet="${3}"
+	vtnet="${4}"
+	vtnet_inet="${5}"
+	atf_check ifconfig "${tap}" create inet "${tap_inet}" link0
+	echo "ifconfig_${vtnet}=\"inet ${vtnet_inet}\"" >> \
+	     "vmctl.${vm}.rcappend"
 }
 
 # tap6_create - configure tap interface on host machine with matching
 #               vtnet interface on virtual machine, IPv6 version.
 tap6_create () {
-    vm="${1}"
-    tap="${2}"
-    tap_inet6="${3}"
-    vtnet="${4}"
-    vtnet_inet6="${5}"
-    atf_check ifconfig "${tap}" create inet6 "${tap_inet6}" link0
-    (
-        echo "ifconfig_${vtnet}=\"inet 0.0.0.0/8\""
-        echo "ifconfig_${vtnet}_ipv6=\"inet6 ${vtnet_inet6}\""
-    ) >> "vmctl.${vm}.rcappend"
+	vm="${1}"
+	tap="${2}"
+	tap_inet6="${3}"
+	vtnet="${4}"
+	vtnet_inet6="${5}"
+	atf_check ifconfig "${tap}" create inet6 "${tap_inet6}" link0
+	(
+		echo "ifconfig_${vtnet}=\"inet 0.0.0.0/8\""
+		echo "ifconfig_${vtnet}_ipv6=\"inet6 ${vtnet_inet6}\""
+	) >> "vmctl.${vm}.rcappend"
 }
 
 # bridge_create - create bridge interface for communication between
-# virtual machines.
+#                 virtual machines.
 bridge_create () {
-    iface="${1}"
-    shift 1 || atf_fail "bridge_create(): No bridge interface specified."
-    atf_check ifconfig "${iface}" create
-    for i in "$@" ; do
-        atf_check ifconfig "${iface}" addm "${i}"
-        atf_check ifconfig "${iface}" stp "${i}"
-    done
-    atf_check ifconfig "${iface}" up
+	iface="${1}"
+	shift 1 || atf_fail "bridge_create(): No bridge interface specified."
+	atf_check ifconfig "${iface}" create
+	for i in "$@" ; do
+		atf_check ifconfig "${iface}" addm "${i}"
+		atf_check ifconfig "${iface}" stp "${i}"
+	done
+	atf_check ifconfig "${iface}" up
 }
 
 # vm_create - create and start a virtual machine.
 vm_create () {
-    vm="${1}"
-    shift 1 || atf_fail "vm_create(): No VM specified."
-    # Rest of arguments is network (tap) interfaces.
-    #echo "==== BEGIN ${vm} ====" >&2
-    #cat "vmctl.${vm}.rcappend" >&2
-    #echo "==== END ${vm} ====" >&2
-    vmctl.sh create "${vm}" "zroot/tests/pf" \
-             "/dev/nmdmtests-pf-${vm}B" "$@"
-    case "$?" in
-        (0) ;;
-        (2) atf_skip "Cannot run bhyve, support lacking?" ;;
-        (*) atf_fail "vm_create(): vmctl.sh error." ;;
-    esac
-    # If all went well, valid SSH configuration should have been
-    # created.
-    ssh_cmd_vm="$(ssh_cmd "${vm}")"
-    atf_check [ "x${ssh_cmd_vm}" '!=' "x" ]
+	vm="${1}"
+	shift 1 || atf_fail "vm_create(): No VM specified."
+	# Rest of arguments is network (tap) interfaces.
+	#echo "==== BEGIN ${vm} ====" >&2
+	#cat "vmctl.${vm}.rcappend" >&2
+	#echo "==== END ${vm} ====" >&2
+	vmctl.sh create "${vm}" "zroot/tests/pf" \
+	         "/dev/nmdmtests-pf-${vm}B" "$@"
+	case "$?" in
+		(0) ;;
+		(2) atf_skip "Cannot run bhyve, support lacking?" ;;
+		(*) atf_fail "vm_create(): vmctl.sh error." ;;
+	esac
+	# If all went well, valid SSH configuration should have been
+	# created.
+	ssh_cmd_vm="$(ssh_cmd "${vm}")"
+	atf_check [ "x${ssh_cmd_vm}" '!=' "x" ]
 }
 
 # vm_destroy - stop and erase a virtual machine.
 vm_destroy () {
-    vm="${1}"
-    vmctl.sh destroy "${vm}" "zroot/tests/pf"
+	vm="${1}"
+	vmctl.sh destroy "${vm}" "zroot/tests/pf"
 }
 
 # vm_ether - get Ethernet address of interface of virtual machine.
 vm_ether () {
-    vm="${1}"
-    iface="${2}"
-    ssh_cmd_vm="$(ssh_cmd "${vm}")" || {
-        echo "Could not build SSH command for VM ${vm}!" >&2
-        return 1
-    }
-    ether_pattern='[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]'
-    ${ssh_cmd_vm} ifconfig "${iface}" | \
-        grep -i 'ether' | grep -io "${ether_pattern}"
+	vm="${1}"
+	iface="${2}"
+	ssh_cmd_vm="$(ssh_cmd "${vm}")" || return 1
+	ether_pattern="\
+[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:\
+[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]"
+	${ssh_cmd_vm} ifconfig "${iface}" |
+		grep -i 'ether' | grep -io "${ether_pattern}"
 }
 
 # upload_file - Upload file to virtual machine.
 upload_file () {
-    vm="${1}"
-    file="${2}"
-    filename="${3}"
-    [ -z "${filename}" ] && filename="${file}"
-    (
-        cat "$(atf_get_srcdir)/files/${file}" | \
-            $(ssh_cmd "${vm}") "cat > /root/${filename}"
-    ) || atf_fail "upload_file(): Could not upload ${file} as ${filename}"
+	vm="${1}"
+	file="${2}"
+	filename="${3}"
+	[ -z "${filename}" ] && filename="${file}"
+	(
+		cat "$(atf_get_srcdir)/files/${file}" |
+			$(ssh_cmd "${vm}") "cat > /root/${filename}"
+	) || atf_fail "upload_file(): Could not upload ${file} as ${filename}"
 }

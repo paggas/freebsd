@@ -12,17 +12,17 @@
 sourcedir="${1}"
 
 [ -z "${sourcedir}" ] && {
-    echo "Usage: ${0} {sourcedir}" >&2
-    exit 1
+	echo "Usage: ${0} {sourcedir}" >&2
+	exit 1
 }
 
 error () {
-    echo "${0}: ${1}" >&2
+	echo "${0}: ${1}" >&2
 }
 
 error_exit () {
-    error "${1}"
-    exit 1
+	error "${1}"
+	exit 1
 }
 
 ncpu="$(sysctl -n hw.ncpu)"
@@ -41,48 +41,54 @@ sourcedir_canon="$(readlink -f ${sourcedir})"
 
 # Force rebuilding by make release.
 chflags -R noschg "/usr/obj${sourcedir_canon}/release" ||
-    error_exit "Could not run chflags on /usr/obj${sourcedir_canon}/release, wrong object directory?"
+	error_exit "Could not run chflags on \
+/usr/obj${sourcedir_canon}/release, wrong object directory?"
 rm -fr "/usr/obj${sourcedir_canon}/release" ||
-    error_exit "Could not remove /usr/obj${sourcedir_canon}/release, wrong object directory?"
+	error_exit "Could not remove /usr/obj${sourcedir_canon}/release, \
+wrong object directory?"
 
 make release || error_exit "Cannot run 'make release'."
 make vm-image \
      WITH_VMIMAGES="1" VMBASE="vm-tests-pf" \
      VMFORMATS="raw" VMSIZE="3G" ||
-    error_exit "Cannot run 'make vm-image'."
+	error_exit "Cannot run 'make vm-image'."
 
 cd "/usr/obj${sourcedir_canon}/release" ||
-    error_exit "Cannot access /usr/obj${sourcedir_canon}/release, wrong object directory?"
+	error_exit "Cannot access /usr/obj${sourcedir_canon}/release, \
+wrong object directory?"
 zfs create -p "${baseimg}" ||
-    error_exit "Cannot create ZFS dataset ${baseimg}, is 'zroot' available?"
+	error_exit "Cannot create ZFS dataset ${baseimg}, \
+is 'zroot' available?"
 
 zmountbase="$(zfs get -H -o value mountpoint "${baseimg}")" ||
-    error_exit "Cannot get mountpoint of dataset ${baseimg}!"
+	error_exit "Cannot get mountpoint of dataset ${baseimg}!"
 
 install -o root -g wheel -m 0644 \
         "vm-tests-pf.raw" "${zmountbase}/img" ||
-    error_exit "Cannot copy image file to ZFS dataset."
+	error_exit "Cannot copy image file to ZFS dataset."
 
 mkdir -p "${mountdir}" ||
-    error_exit "Cannot create mountpoint ${mountdir}."
+	error_exit "Cannot create mountpoint ${mountdir}."
 md="$(mdconfig ${zmountbase}/img)" ||
-    error_exit "Cannot create memory disk for ${zmountbase}/img."
+	error_exit "Cannot create memory disk for ${zmountbase}/img."
 (
-    mount "/dev/${md}p3" "${mountdir}" || {
-        error "Cannot mount /dev/${md}p3 on ${mountdir}, image file malformed?"
-        return 1
-    }
-    (
-        chroot "${mountdir}" \
-               env ASSUME_ALWAYS_YES="yes" \
-               pkg install "python2.7" "scapy" || {
-            error "Cannot install packages on image file, is there an active internet connection?"
-            return 1
-        }
-    )
-    status="$?"
-    umount "${mountdir}"
-    return "${status}"
+	mount "/dev/${md}p3" "${mountdir}" || {
+		error "Cannot mount /dev/${md}p3 on ${mountdir}, \
+image file malformed?"
+		return 1
+	}
+	(
+		chroot "${mountdir}" \
+		       env ASSUME_ALWAYS_YES="yes" \
+		       pkg install "python2.7" "scapy" || {
+			error "Cannot install packages on image file, \
+is there an active internet connection?"
+			return 1
+		}
+	)
+	status="$?"
+	umount "${mountdir}"
+	return "${status}"
 )
 status="$?"
 mdconfig -du "${md}"
