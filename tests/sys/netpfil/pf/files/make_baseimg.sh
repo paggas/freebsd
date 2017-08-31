@@ -16,45 +16,69 @@ sourcedir="${1}"
     exit 1
 }
 
+error () {
+    echo "${0}: ${1}" >&2
+}
+
+error_exit () {
+    error "${1}"
+    exit 1
+}
+
 ncpu="$(sysctl -n hw.ncpu)"
 baseimg="zroot/tests/pf/baseimg"
 mountdir="/mnt/tests/pf/baseimg"
 
-cd "${sourcedir}" || exit 1
+cd "${sourcedir}" || error_exit "Cannot access source directory ${sourcedir}."
 #make -j "${ncpu}" buildworld || exit 1
 #make -j "${ncpu}" buildkernel || exit 1
 
-cd release || exit 1
+cd release || error_exit "Cannot access release/ directory in source directory."
 # TODO Instead of make clean, use an alternative target directory.
 #make clean || exit 1
 
 sourcedir_canon="$(readlink -f ${sourcedir})"
 
 # Force rebuilding by make release.
-chflags -R noschg "/usr/obj${sourcedir_canon}/release" || exit 1
-rm -fr "/usr/obj${sourcedir_canon}/release" || exit 1
+chflags -R noschg "/usr/obj${sourcedir_canon}/release" ||
+    error_exit "Could not run chflags on /usr/obj${sourcedir_canon}/release, wrong object directory?"
+rm -fr "/usr/obj${sourcedir_canon}/release" ||
+    error_exit "Could not remove /usr/obj${sourcedir_canon}/release, wrong object directory?"
 
-make release || exit 1
+make release || error_exit "Cannot run 'make release'."
 make vm-image \
      WITH_VMIMAGES="1" VMBASE="vm-tests-pf" \
-     VMFORMATS="raw" VMSIZE="3G" || exit 1
+     VMFORMATS="raw" VMSIZE="3G" ||
+    error_exit "Cannot run 'make vm-image'."
 
-cd "/usr/obj${sourcedir_canon}/release" || exit 1
-zfs create -p "${baseimg}" || exit 1
+cd "/usr/obj${sourcedir_canon}/release" ||
+    error_exit "Cannot access /usr/obj${sourcedir_canon}/release, wrong object directory?"
+zfs create -p "${baseimg}" ||
+    error_exit "Cannot create ZFS dataset ${baseimg}, is 'zroot' available?"
 
-zmountbase="$(zfs get -H -o value mountpoint "${baseimg}")" || exit 1
+zmountbase="$(zfs get -H -o value mountpoint "${baseimg}")" ||
+    error_exit "Cannot get mountpoint of dataset ${baseimg}!"
 
 install -o root -g wheel -m 0644 \
-        "vm-tests-pf.raw" "${zmountbase}/img" || exit 1
+        "vm-tests-pf.raw" "${zmountbase}/img" ||
+    error_exit "Cannot copy image file to ZFS dataset."
 
-mkdir -p "${mountdir}" || exit 1
-md="$(mdconfig ${zmountbase}/img)" || exit 1
+mkdir -p "${mountdir}" ||
+    error_exit "Cannot create mountpoint ${mountdir}."
+md="$(mdconfig ${zmountbase}/img)" ||
+    error_exit "Cannot create memory disk for ${zmountbase}/img."
 (
-    mount "/dev/${md}p3" "${mountdir}" || return 1
+    mount "/dev/${md}p3" "${mountdir}" || {
+        error "Cannot mount /dev/${md}p3 on ${mountdir}, image file malformed?"
+        return 1
+    }
     (
         chroot "${mountdir}" \
                env ASSUME_ALWAYS_YES="yes" \
-               pkg install "python2.7" "scapy" || return 1
+               pkg install "python2.7" "scapy" || {
+            error "Cannot install packages on image file, is there an active internet connection?"
+            return 1
+        }
     )
     status="$?"
     umount "${mountdir}"

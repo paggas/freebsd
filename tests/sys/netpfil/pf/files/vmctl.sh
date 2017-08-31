@@ -17,6 +17,15 @@ debug () {
     echo "DEBUG: vmctl: (vm=$vm) $@" >&2
 }
 
+error () {
+    echo "${0}: ${1}" >&2
+}
+
+error_exit () {
+    error "${1}"
+    exit 1
+}
+
 #debug "command line: $@"
 
 cmd="${1}"
@@ -41,6 +50,7 @@ check_baseimg () {
     # extension, the dataset) exists and contains the image file.
     zmountbase="$(zfs get -H -o value mountpoint ${baseimg})" &&
         [ -e "${zmountbase}/img" ] && return
+    error "Cannot find base image, have you run make_baseimg.sh?"
     return 1
     #zfs create -p "${baseimg}" || return 1
     #zmountbase="$(zfs get -H -o value mountpoint ${baseimg})" || return 1
@@ -70,41 +80,68 @@ write_sshlogin () {
             sed -E "s/.*[^0-9]([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+).*/\1/" |
             head -n 1)" &&
         [ "x${addr}" '!=' "x" ] || (
-            echo "${0}: write_sshlogin: no IPv4 address found." >&2
+            error "${0}: write_sshlogin: no IPv4 address found."
             return 1
         ) || return 1
-    echo "root@${addr}" > "vmctl.${vm}.sshlogin" || return 1
+    echo "root@${addr}" > "vmctl.${vm}.sshlogin" || {
+        error "Cannot write SSH login file."
+        return 1
+    }
 }
 
 #debug 'begin'
 case "${cmd}" in
     (create)
         check_baseimg || exit 1
-        zfs snap "${snap}" || exit 1
-        zfs clone "${snap}" "${vmimg}" || exit 1
-        ssh-keygen -q -P '' -f "vmctl.${vm}.id_rsa" || exit 1
-        write_sshlogin || exit 1
-        mkdir -p "${mountdir}" || exit 1
-        zmountvm="$(zfs get -H -o value mountpoint ${vmimg})" || return 1
-        md="$(mdconfig ${zmountvm}/img)" || exit 1
+        zfs snap "${snap}" || error_exit "Cannot create ZFS snapshot ${snap}."
+        zfs clone "${snap}" "${vmimg}" || error_exit "Cannot clone ZFS snapshot ${snap} to ${vmimg}."
+        ssh-keygen -q -P '' -f "vmctl.${vm}.id_rsa" || error_exit "Cannot create SSH identify file."
+        write_sshlogin || error_exit "Cannot write SSH identify file."
+        mkdir -p "${mountdir}" || error_exit "Cannot create mountpoint ${mountdir}."
+        zmountvm="$(zfs get -H -o value mountpoint ${vmimg})" || {
+            error "Cannot get mountpoint of dataset ${baseimg}!"
+            return 1
+        }
+        md="$(mdconfig ${zmountvm}/img)" || error_exit "Cannot create memory disk for ${zmountvm}/img."
         (
-            mount "/dev/${md}p3" "${mountdir}" || return 1
+            mount "/dev/${md}p3" "${mountdir}" || {
+                error "Cannot mount /dev/${md}p3 on ${mountdir}, image file malformed?"
+                return 1
+            }
             (
                 #make_install || return 1
                 (
-                    umask 077 || return 1
-                    mkdir -p "${mountdir}/root/.ssh" || return 1
+                    umask 077 || {
+                        error "Cannot change umask!"
+                        return 1
+                    }
+                    mkdir -p "${mountdir}/root/.ssh" || {
+                        error "Cannot create ${mountdir}/root/.ssh!"
+                        return 1
+                    }
                     cat "vmctl.${vm}.id_rsa.pub" >> \
                         "${mountdir}/root/.ssh/authorized_keys"
-                ) || return 1
+                ) || {
+                    error "Cannot write ${mountdir}/root/.ssh/authorized_keys!"
+                    return 1
+                }
                 (
                     echo "PermitRootLogin without-password" ;
                     echo "StrictModes no" ;
-                ) >> "${mountdir}/etc/ssh/sshd_config" || return 1
+                ) >> "${mountdir}/etc/ssh/sshd_config" || {
+                    error "Cannot write ${mountdir}/etc/ssh/sshd_config!"
+                    return 1
+                }
                 echo "sshd_enable=\"YES\"" >> \
-                     "${mountdir}/etc/rc.conf" || return 1
+                     "${mountdir}/etc/rc.conf" || {
+                    error "Cannot write ${mountdir}/etc/rc.conf!"
+                    return 1
+                }
                 cat "vmctl.${vm}.rcappend" >> \
-                    "${mountdir}/etc/rc.conf" || return 1
+                    "${mountdir}/etc/rc.conf" || {
+                    error "Cannot write ${mountdir}/etc/rc.conf!"
+                    return 1
+                }
                 # Test
                 # echo "ifconfig vtnet0 ether 02:00:00:00:00:01" >> \
                 #      "${mountdir}/etc/start_if.vtnet0" || return 1

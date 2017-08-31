@@ -83,7 +83,7 @@ tap6_create () {
 # virtual machines.
 bridge_create () {
     iface="${1}"
-    shift 1 || atf_fail "bridge_create"
+    shift 1 || atf_fail "bridge_create(): No bridge interface specified."
     atf_check ifconfig "${iface}" create
     for i in "$@" ; do
         atf_check ifconfig "${iface}" addm "${i}"
@@ -95,7 +95,7 @@ bridge_create () {
 # vm_create - create and start a virtual machine.
 vm_create () {
     vm="${1}"
-    shift 1 || atf_fail "vm_create"
+    shift 1 || atf_fail "vm_create(): No VM specified."
     # Rest of arguments is network (tap) interfaces.
     #echo "==== BEGIN ${vm} ====" >&2
     #cat "vmctl.${vm}.rcappend" >&2
@@ -105,7 +105,7 @@ vm_create () {
     case "$?" in
         (0) ;;
         (2) atf_skip "Cannot run bhyve, support lacking?" ;;
-        (*) atf_fail "vmctl.sh failed." ;;
+        (*) atf_fail "vm_create(): vmctl.sh error." ;;
     esac
     # If all went well, valid SSH configuration should have been
     # created.
@@ -123,7 +123,10 @@ vm_destroy () {
 vm_ether () {
     vm="${1}"
     iface="${2}"
-    ssh_cmd_vm="$(ssh_cmd "${vm}")" || return 1
+    ssh_cmd_vm="$(ssh_cmd "${vm}")" || {
+        echo "Could not build SSH command for VM ${vm}!" >&2
+        return 1
+    }
     ether_pattern='[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]'
     ${ssh_cmd_vm} ifconfig "${iface}" | \
         grep -i 'ether' | grep -io "${ether_pattern}"
@@ -138,5 +141,5 @@ upload_file () {
     (
         cat "$(atf_get_srcdir)/files/${file}" | \
             $(ssh_cmd "${vm}") "cat > /root/${filename}"
-    ) || atf_fail "Upload ${file} ${filename}"
+    ) || atf_fail "upload_file(): Could not upload ${file} as ${filename}"
 }
