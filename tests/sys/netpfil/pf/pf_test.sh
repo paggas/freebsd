@@ -162,11 +162,11 @@ remote_block_drop_cleanup () {
 #     atf_check sleep "$(expr "$timeout" + 2)"
 #     # Not sure if following will work with atf_check
 #     atf_check scp "$SSH_0:$tempdir/pflog.pcap" ./
-#     # TODO following will be removed when the test is complete, but
+#     # Following will be removed when the test is complete, but
 #     # since processing isn't implemented yet, we just save the file
 #     # for now.
 #     atf_check cp pflog.pcap "$(atf_get_srcdir)/"
-#     # TODO process pflog.pcap for verification
+#     # Process pflog.pcap for verification
 # }
 # remote_scrub_todo_cleanup () {
 #     kill "$(cat tcpdump.pid)"

@@ -7,6 +7,11 @@
 # to the VM is received through the vmctl.${vm}.rcappend file.  The
 # first interface specified in the ${ifs} list is the one for which
 # SSH is setup.
+#
+# Exit status:
+# - 0 on success.
+# - 1 on error other than VM not starting.
+# - 2 on VM not starting.
 
 debug () {
     echo "DEBUG: vmctl: (vm=$vm) $@" >&2
@@ -43,19 +48,16 @@ check_baseimg () {
     # fetch -o "${imgfile}.xz" \
     #       "https://download.freebsd.org/ftp/releases/VM-IMAGES/11.0-RELEASE/amd64/Latest/FreeBSD-11.0-RELEASE-amd64.raw.xz" \
     #     || return 1
-    # TODO Use local copy of above for now.
     # cp -ai "/var/tmp/FreeBSD-11.0-RELEASE-amd64.raw.xz" \
     #    "${zmountbase}/img.xz" || return 1
-    #cp -ai "/usr/obj/usr/home/paggas/paggas.freebsd/release/vm-cccc.raw" \
-    #   "${zmountbase}/img" || return 1
-    # TODO Install scapy on image.
+    # cp -ai "/usr/obj/usr/home/paggas/paggas.freebsd/release/vm-cccc.raw" \
+    #    "${zmountbase}/img" || return 1
 }
 
 # # Install system on VM.
 # make_install () {
-#     # TODO Copy pf binary files from host to VM.  Quick fix while we
-#     # use official images, will do proper system installs in the
-#     # future.
+#     # Copy pf binary files from host to VM.  Quick fix while we use
+#     # official images, will do proper system installs in the future.
 #     cp -a "/boot/kernel/pf.ko" \
 #        "${mountdir}/boot/kernel/pf.ko" || return 1
 #     cp -a "/sbin/pfctl" \
@@ -129,7 +131,11 @@ case "${cmd}" in
                    sh /usr/share/examples/bhyve/vmrun.sh ${ifsopt} \
                    -d "${zmountvm}/img" -C "${console}" \
                    "tests-pf-${vm}"
-            sleep 5 # TODO debug only
+            #sleep 5 # Debug only.
+            sleep 2
+            # Check if bhyve is running, otherwise it has probably
+            # failed to start.
+            [ -e "vmctl.${vm}.pid" ] || exit 2
             #ls -la '/dev/vmm' >&2
         )
         ;;
@@ -139,8 +145,8 @@ case "${cmd}" in
         rm "vmctl.${vm}.id_rsa" \
            "vmctl.${vm}.id_rsa.pub" \
            "vmctl.${vm}.sshlogin"
-        # TODO Sleep a bit before destroying dataset, so that it
-        # doesn't show up as "busy".
+        # Sleep a bit before destroying dataset, so that it doesn't
+        # show up as "busy".
         sleep 5
         zfs destroy -R "${snap}"
         ;;

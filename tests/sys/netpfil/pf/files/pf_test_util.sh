@@ -100,9 +100,13 @@ vm_create () {
     #echo "==== BEGIN ${vm} ====" >&2
     #cat "vmctl.${vm}.rcappend" >&2
     #echo "==== END ${vm} ====" >&2
-    atf_check -e ignore \
-              vmctl.sh create "${vm}" "zroot/tests/pf" \
-              "/dev/nmdmtests-pf-${vm}B" "$@"
+    vmctl.sh create "${vm}" "zroot/tests/pf" \
+             "/dev/nmdmtests-pf-${vm}B" "$@"
+    case "$?" in
+        (0) ;;
+        (2) atf_skip "Cannot run bhyve, support lacking?" ;;
+        (*) atf_fail "vmctl.sh failed." ;;
+    esac
     # If all went well, valid SSH configuration should have been
     # created.
     ssh_cmd_vm="$(ssh_cmd "${vm}")"
