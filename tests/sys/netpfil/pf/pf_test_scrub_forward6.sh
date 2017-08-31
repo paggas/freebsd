@@ -9,7 +9,14 @@
 # pcap file, which is copied back to the client for examination.  By
 # examining the captured packets, we can verify that reassembly occurs
 # on one but not the other interface.
-atf_test_case scrub_forward6 cleanup
+
+. "$(atf_get_srcdir)/files/pf_test_util.sh"
+
+atf_init_test_cases () {
+    atf_add_test_case "scrub_forward6"
+}
+
+atf_test_case "scrub_forward6" cleanup
 scrub_forward6_head () {
 	atf_set descr 'Scrub defrag with forward on one \
 of two interfaces and test difference, IPv6 version.'

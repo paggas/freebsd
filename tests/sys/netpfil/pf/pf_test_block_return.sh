@@ -3,7 +3,14 @@
 # which one port is blocked-with-return by pf.  The client tries then
 # to connect to the two instances.  The test succeeds if one
 # connection succeeds but the other one fails.
-atf_test_case block_return cleanup
+
+. "$(atf_get_srcdir)/files/pf_test_util.sh"
+
+atf_init_test_cases () {
+    atf_add_test_case "block_return"
+}
+
+atf_test_case "block_return" cleanup
 block_return_head () {
 	atf_set descr 'Block-with-return a port and test that it is blocked.'
 	atf_set "require.user" "root"
