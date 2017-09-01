@@ -97,17 +97,35 @@ LOCAL_IF_3='vtnet3'" | \
     atf_check daemon -p tcpdump.pid $(ssh_cmd server) \
               "cd /root && tcpdump -G 15 -W 1 -i pflog0 -w pflog.pcap"
     atf_check sleep 2
+    # Alt 1: Generate traffic with scapy.
+    # BEGIN
+    # atf_check -o ignore $(ssh_cmd client) \
+    #           "cd /root && ${PYTHON2} test.py sendonly"
+    # END
+    # Alt 2: Generate traffic with ping6.
+    # BEGIN
+    # Run ping6 with a packet size of 6000, which will cause
+    # fragmentation.  By capturing on pflog0, packets to vtnet1 will
+    # show up as unfragmented, while packets to vtnet2 will show up as
+    # fragmented.  This will later be tested using scrub6.py.
     atf_check -o ignore $(ssh_cmd client) \
-              "cd /root && ${PYTHON2} test.py sendonly"
+              "ping6 -c3 -s6000 fd22:27ca:58fe:2::3"
+    atf_check -o ignore $(ssh_cmd client) \
+              "ping6 -c3 -s6000 fd22:27ca:58fe:3::3"
+    # END
     # Wait for tcpdump to finish.
     atf_check sleep 15
+    # Some extra time, to make sure tcpdump exits cleanly.
+    atf_check sleep 3
     #atf_check kill "$(cat tcpdump.pid)"
     $(ssh_cmd server) "cat /root/pflog.pcap" > "pflog.pcap" ||
-        atf_fail "Could not download pflog.pcap from VM."
+        atf_fail "Could not download pflog.pcap from server VM."
     $(ssh_cmd client) "cat > /root/pflog.pcap" < "pflog.pcap" ||
-        atf_fail "Could not upload pflog.pcap to VM."
+        atf_fail "Could not upload pflog.pcap to client VM."
+    # Debug.
+    #cp -a "pflog.pcap" ~paggas
     atf_check -o ignore $(ssh_cmd client) \
-              "cd /root && ${PYTHON2} test.py testresult"
+              "cd /root && ${PYTHON2} test.py testresult2"
 }
 scrub_forward6_cleanup ()
 {

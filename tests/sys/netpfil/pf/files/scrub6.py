@@ -40,7 +40,10 @@ def sendonly():
     sp.sendp(sp.fragment6(tofrag1, 400), iface=conf.LOCAL_IF_1, verbose=False)
     sp.sendp(sp.fragment6(tofrag2, 400), iface=conf.LOCAL_IF_2, verbose=False)
 
-def testresult():
+def testresult1():
+    '''testresult1() - test result using Defragmenter6
+
+    This function is used if traffic is generated using sendonly().'''
     success1, success2 = False, False
 
     defr = util.Defragmenter6()
@@ -76,17 +79,47 @@ def testresult():
     if not (success1 and success2):
         exit(1)
         
+def testresult2():
+    '''testresult2() - test result using sets
+
+    This function is used if traffic is generated using ping6.'''
+    sniffed = sp.sniff(offline='pflog.pcap')
+    packets = [(p[sp.IPv6].src, p[sp.IPv6].dst,
+                sp.IPv6ExtHdrFragment in p) for p in sniffed]
+    withfrag = set((src, dst)
+                   for (src, dst, isfrag) in packets if isfrag)
+    withoutfrag = set((src, dst)
+                      for (src, dst, isfrag) in packets if not isfrag)
+    # By running set() above, we can count the amount of different
+    # (src, dst) combinations for packets with and without
+    # fragmentation.  Packets to and from REMOTE_ADDR6_1 as well as
+    # from REMOTE_ADDR6_2 will be unfragmented, while packets to
+    # REMOTE_ADDR6_2 will be fragmented.
+    pairs = [
+        (conf.LOCAL_ADDR6_1, conf.REMOTE_ADDR6_1),
+        (conf.REMOTE_ADDR6_1, conf.LOCAL_ADDR6_1),
+        (conf.LOCAL_ADDR6_2, conf.REMOTE_ADDR6_2),
+        (conf.REMOTE_ADDR6_2, conf.LOCAL_ADDR6_2),
+    ]
+    withfrag_correct = set([pairs[2]])
+    withoutfrag_correct = set([pairs[0], pairs[1], pairs[3]])
+    withfrag_success = (withfrag == withfrag_correct)
+    withoutfrag_success = (withoutfrag == withoutfrag_correct)
+    if not (withfrag_success and withoutfrag_success):
+        exit(1)
+
 if len(sys.argv) < 2:
     exit('%s: No command given.' % sys.argv[0])
 
 if sys.argv[1] == 'sendonly':
     sendonly()
-    exit()
-elif sys.argv[1] == 'testresult':
-    testresult()
-    exit()
+elif sys.argv[1] == 'testresult1':
+    testresult1()
+elif sys.argv[1] == 'testresult2':
+    testresult2()
 else:
     exit('%s: Bad command: %s.' % (sys.argv[0], repr(sys.argv[1])))
+exit()
 
 # Following sniff-and-reassembly code kept for future usage.
 
