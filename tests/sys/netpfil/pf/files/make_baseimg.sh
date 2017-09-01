@@ -14,8 +14,9 @@ packages="python27 scapy"
 # Change this to point to the source directory.
 sourcedir="${1}"
 
-[ -z "${sourcedir}" ] && {
-	echo "Usage: ${0} {sourcedir}" >&2
+[ -z "${sourcedir}" ] &&
+{
+	echo "Usage: ${name} {sourcedir}" >&2
 	exit 1
 }
 
@@ -36,19 +37,24 @@ cd "${sourcedir}" || error_exit "Cannot access source directory ${sourcedir}."
 #make -j "${ncpu}" buildworld || exit 1
 #make -j "${ncpu}" buildkernel || exit 1
 
-cd release || error_exit "Cannot access release/ directory in source directory."
+cd "release" ||
+	error_exit "Cannot access release/ directory in source directory."
 # TODO Instead of make clean, use an alternative target directory.
 #make clean || exit 1
 
 sourcedir_canon="$(readlink -f ${sourcedir})"
+releasedir="/usr/obj${sourcedir_canon}/release"
 
 # Force rebuilding by make release.
-chflags -R noschg "/usr/obj${sourcedir_canon}/release" ||
-	error_exit "Could not run chflags on \
-/usr/obj${sourcedir_canon}/release, wrong object directory?"
-rm -fr "/usr/obj${sourcedir_canon}/release" ||
-	error_exit "Could not remove /usr/obj${sourcedir_canon}/release, \
-wrong object directory?"
+[ -e "${releasedir}" ] &&
+{
+	chflags -R noschg "${releasedir}" ||
+	error_exit \
+	    "Could not run chflags on ${releasedir}, wrong object directory?"
+}
+rm -fr "${releasedir}" ||
+	error_exit \
+	    "Could not remove ${releasedir}, wrong object directory?"
 
 make release || error_exit "Cannot run 'make release'."
 make vm-image \
@@ -56,9 +62,9 @@ make vm-image \
      VMFORMATS="raw" VMSIZE="3G" ||
 	error_exit "Cannot run 'make vm-image'."
 
-cd "/usr/obj${sourcedir_canon}/release" ||
-	error_exit "Cannot access /usr/obj${sourcedir_canon}/release, \
-wrong object directory?"
+cd "${releasedir}" ||
+	error_exit \
+	    "Cannot access ${releasedir}, wrong object directory?"
 zfs create -p "${baseimg}" ||
 	error_exit "Cannot create ZFS dataset ${baseimg}, \
 is 'zroot' available?"
