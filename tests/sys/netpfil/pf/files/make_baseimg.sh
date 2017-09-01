@@ -20,6 +20,12 @@ sourcedir="${1}"
 	exit 1
 }
 
+[ "x$(whoami)" '!=' "xroot" ] &&
+{
+	echo "${name} needs to be run as root." >&2
+	exit 1
+}
+
 error () {
 	echo "${name}: ${1}" >&2
 }
