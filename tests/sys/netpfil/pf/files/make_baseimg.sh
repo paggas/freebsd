@@ -81,9 +81,16 @@ image file malformed?"
 		return 1
 	}
 	(
+		echo "autoboot_delay=\"2\"" >> \
+		     "${mountdir}/boot/loader.conf" ||
+		{
+			error "Cannot edit loader.conf on image file!"
+			return 1
+		}
 		chroot "${mountdir}" \
 		       env ASSUME_ALWAYS_YES="yes" \
-		       pkg install ${packages} || {
+		       pkg install ${packages} ||
+                {
 			error "Cannot install packages into image file, \
 is there an active internet connection?"
 			return 1
