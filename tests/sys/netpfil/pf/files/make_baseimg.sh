@@ -82,8 +82,8 @@ image file malformed?"
 	(
 		chroot "${mountdir}" \
 		       env ASSUME_ALWAYS_YES="yes" \
-		       pkg install "python2.7" "scapy" || {
-			error "Cannot install packages on image file, \
+		       pkg install "python27" "scapy" || {
+			error "Cannot install packages into image file, \
 is there an active internet connection?"
 			return 1
 		}
