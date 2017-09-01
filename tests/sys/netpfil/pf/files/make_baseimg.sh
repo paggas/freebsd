@@ -14,25 +14,25 @@ packages="python27 scapy"
 # Change this to point to the source directory.
 sourcedir="${1}"
 
-[ -z "${sourcedir}" ] &&
+if [ -z "${sourcedir}" ] ; then
+    echo "Usage: ${name} {sourcedir}" >&2
+    exit 1
+fi
+
+if [ "x$(whoami)" '!=' "xroot" ] ; then
+    echo "${name} needs to be run as root." >&2
+    exit 1
+fi
+
+error ()
 {
-	echo "Usage: ${name} {sourcedir}" >&2
-	exit 1
+    echo "${name}: ${1}" >&2
 }
 
-[ "x$(whoami)" '!=' "xroot" ] &&
+error_exit ()
 {
-	echo "${name} needs to be run as root." >&2
-	exit 1
-}
-
-error () {
-	echo "${name}: ${1}" >&2
-}
-
-error_exit () {
-	error "${1}"
-	exit 1
+    error "${1}"
+    exit 1
 }
 
 ncpu="$(sysctl -n hw.ncpu)"
@@ -52,27 +52,26 @@ sourcedir_canon="$(readlink -f ${sourcedir})"
 releasedir="/usr/obj${sourcedir_canon}/release"
 
 # Force rebuilding by make release.
-[ -e "${releasedir}" ] &&
-{
-	chflags -R noschg "${releasedir}" ||
-	error_exit \
-	    "Could not run chflags on ${releasedir}, wrong object directory?"
-}
+if [ -e "${releasedir}" ] ; then
+    chflags -R noschg "${releasedir}" ||
+        error_exit \
+            "Could not run chflags on ${releasedir}, wrong object directory?"
+fi
 rm -fr "${releasedir}" ||
-	error_exit \
-	    "Could not remove ${releasedir}, wrong object directory?"
+    error_exit \
+        "Could not remove ${releasedir}, wrong object directory?"
 
 make release || error_exit "Cannot run 'make release'."
 make vm-image \
      WITH_VMIMAGES="1" VMBASE="vm-tests-pf" \
      VMFORMATS="raw" VMSIZE="3G" ||
-	error_exit "Cannot run 'make vm-image'."
+    error_exit "Cannot run 'make vm-image'."
 
 cd "${releasedir}" ||
-	error_exit \
-	    "Cannot access ${releasedir}, wrong object directory?"
+    error_exit \
+        "Cannot access ${releasedir}, wrong object directory?"
 zfs create -p "${baseimg}" ||
-	error_exit "Cannot create ZFS dataset ${baseimg}, \
+    error_exit "Cannot create ZFS dataset ${baseimg}, \
 is 'zroot' available?"
 
 zmountbase="$(zfs get -H -o value mountpoint "${baseimg}")" ||
@@ -80,37 +79,35 @@ zmountbase="$(zfs get -H -o value mountpoint "${baseimg}")" ||
 
 install -o root -g wheel -m 0644 \
         "vm-tests-pf.raw" "${zmountbase}/img" ||
-	error_exit "Cannot copy image file to ZFS dataset."
+    error_exit "Cannot copy image file to ZFS dataset."
 
 mkdir -p "${mountdir}" ||
-	error_exit "Cannot create mountpoint ${mountdir}."
+    error_exit "Cannot create mountpoint ${mountdir}."
 md="$(mdconfig ${zmountbase}/img)" ||
-	error_exit "Cannot create memory disk for ${zmountbase}/img."
+    error_exit "Cannot create memory disk for ${zmountbase}/img."
 (
-	mount "/dev/${md}p3" "${mountdir}" || {
-		error "Cannot mount /dev/${md}p3 on ${mountdir}, \
+    mount "/dev/${md}p3" "${mountdir}" || {
+        error "Cannot mount /dev/${md}p3 on ${mountdir}, \
 image file malformed?"
-		return 1
-	}
-	(
-		echo "autoboot_delay=\"2\"" >> \
-		     "${mountdir}/boot/loader.conf" ||
-		{
-			error "Cannot edit loader.conf on image file!"
-			return 1
-		}
-		chroot "${mountdir}" \
-		       env ASSUME_ALWAYS_YES="yes" \
-		       pkg install ${packages} ||
-                {
-			error "Cannot install packages into image file, \
+        return 1
+    }
+    (
+        echo "autoboot_delay=\"2\"" >> \
+             "${mountdir}/boot/loader.conf" || {
+            error "Cannot edit loader.conf on image file!"
+            return 1
+        }
+        chroot "${mountdir}" \
+               env ASSUME_ALWAYS_YES="yes" \
+               pkg install ${packages} || {
+            error "Cannot install packages into image file, \
 is there an active internet connection?"
-			return 1
-		}
-	)
-	status="$?"
-	umount "${mountdir}"
-	return "${status}"
+            return 1
+        }
+    )
+    status="$?"
+    umount "${mountdir}"
+    return "${status}"
 )
 status="$?"
 mdconfig -du "${md}"
