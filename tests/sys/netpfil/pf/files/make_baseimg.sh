@@ -9,6 +9,7 @@
 # make_baseimg.sh should be run as root.
 
 name="make_baseimg.sh"
+packages="python27 scapy"
 
 # Change this to point to the source directory.
 sourcedir="${1}"
@@ -82,7 +83,7 @@ image file malformed?"
 	(
 		chroot "${mountdir}" \
 		       env ASSUME_ALWAYS_YES="yes" \
-		       pkg install "python27" "scapy" || {
+		       pkg install ${packages} || {
 			error "Cannot install packages into image file, \
 is there an active internet connection?"
 			return 1
