@@ -108,7 +108,7 @@ vm_create () {
 	         "/dev/nmdmtests-pf-${vm}B" "$@"
 	case "$?" in
 		(0) ;;
-		(2) atf_skip "Cannot run bhyve, support lacking?" ;;
+		(2) atf_fail "VM did not start, bhyve support lacking?" ;;
 		(*) atf_fail "vm_create(): vmctl.sh error." ;;
 	esac
 	# If all went well, valid SSH configuration should have been
