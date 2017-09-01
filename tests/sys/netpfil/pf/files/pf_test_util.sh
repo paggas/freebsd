@@ -3,7 +3,7 @@
 . "$(atf_get_srcdir)/files/pf_test_conf.sh"
 
 PF_TEST_DIR="$(atf_get_srcdir)"
-export PF_TEST_DIR
+#export PF_TEST_DIR
 
 PATH="${PF_TEST_DIR}/files:${PATH}"
 export PATH
