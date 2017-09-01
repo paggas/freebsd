@@ -47,7 +47,7 @@ ssh_cmd () {
 		return 1
 	}
 	echo "ssh -q -o StrictHostKeyChecking=no \
-	      -i vmctl.${vm}.id_rsa ${sshlogin}"
+-i vmctl.${vm}.id_rsa ${sshlogin}"
 }
 
 # ssh_login () {
