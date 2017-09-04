@@ -27,6 +27,8 @@ scrub_forward_body ()
 {
     rules="scrub in on vtnet1 all fragment reassemble
 pass log (all to pflog0) on { vtnet1 vtnet2 }"
+    # Load host modules.
+    atf_check kldload -n nmdm
     # Set up networking.
     tap_create client tap19302 10.135.213.1/28 vtnet0 10.135.213.2/28
     tap_create server tap19303 10.135.213.17/28 vtnet0 10.135.213.18/28

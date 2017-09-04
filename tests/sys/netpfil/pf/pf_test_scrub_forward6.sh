@@ -28,6 +28,8 @@ scrub_forward6_body ()
 {
     rules="scrub in on vtnet1 all fragment reassemble
 pass log (all to pflog0) on { vtnet1 vtnet2 }"
+    # Load host modules.
+    atf_check kldload -n nmdm
     # Set up networking.
     # Need at least one IPv4 interface per VM for SSH autoconf.
     tap_create client tap19302 10.135.213.1/28 vtnet0 10.135.213.2/28

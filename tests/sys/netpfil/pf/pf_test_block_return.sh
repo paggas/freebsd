@@ -22,6 +22,8 @@ block_return_body ()
     block_port="50000"
     pass_port="50001"
     rules="block return in on vtnet1 proto tcp to port ${block_port}"
+    # Load host modules.
+    atf_check kldload -n nmdm
     # Set up networking.
     tap_create client tap19302 10.135.213.1/28 vtnet0 10.135.213.2/28
     tap_create client tap19303 10.135.213.33/28 vtnet1 10.135.213.35/28
