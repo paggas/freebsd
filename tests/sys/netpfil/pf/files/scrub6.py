@@ -9,7 +9,9 @@ import pickle, random, sys, time
 
 import conf, util
 
-# Data persistent in order to be able to test result later.
+# Data persistent in order to be able to test result later.  Useful
+# when generating own traffic with sendonly() and testing later with
+# testresult1().
 try:
     data = pickle.load(open('test.pickle'))
 except IOError:
