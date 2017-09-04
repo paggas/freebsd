@@ -202,3 +202,8 @@ Below are some areas of improvement for the pf tests:
   test).  A way to simplify this would be desirable.  Perhaps create a
   set of main test cases holding default configuration, that can be
   branched off and modified?
+
+* More accurate IPv6 fragmentation testing: The current test,
+  pf_test_scrub_forward6.sh (as of 20170904), does not test for
+  correct reassembly of the payload, only whether reassembly has or
+  has not occurred.  That could be changed if needed.
