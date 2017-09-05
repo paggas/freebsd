@@ -11,6 +11,8 @@
 
 . "$(atf_get_srcdir)/files/pf_test_util.sh"
 
+aprefix="10.135.213"
+
 atf_init_test_cases ()
 {
     atf_add_test_case "scrub_forward"
@@ -30,14 +32,14 @@ pass log (all to pflog0) on { vtnet1 vtnet2 }"
     # Load host modules.
     atf_check kldload -n nmdm
     # Set up networking.
-    tap_create client tap19302 10.135.213.1/28 vtnet0 10.135.213.2/28
-    tap_create server tap19303 10.135.213.17/28 vtnet0 10.135.213.18/28
-    tap_create client tap19304 10.135.213.33/28 vtnet1 10.135.213.34/28
-    tap_create server tap19305 10.135.213.35/28 vtnet1 10.135.213.36/28
-    tap_create client tap19306 10.135.213.49/28 vtnet2 10.135.213.50/28
-    tap_create server tap19307 10.135.213.51/28 vtnet2 10.135.213.52/28
-    tap_create client tap19308 10.135.213.65/28 vtnet3 10.135.213.66/28
-    tap_create server tap19309 10.135.213.67/28 vtnet3 10.135.213.68/28
+    tap_create client tap19302 "${aprefix}.1/28" vtnet0 "${aprefix}.2/28"
+    tap_create server tap19303 "${aprefix}.17/28" vtnet0 "${aprefix}.18/28"
+    tap_create client tap19304 "${aprefix}.33/28" vtnet1 "${aprefix}.34/28"
+    tap_create server tap19305 "${aprefix}.35/28" vtnet1 "${aprefix}.36/28"
+    tap_create client tap19306 "${aprefix}.49/28" vtnet2 "${aprefix}.50/28"
+    tap_create server tap19307 "${aprefix}.51/28" vtnet2 "${aprefix}.52/28"
+    tap_create client tap19308 "${aprefix}.65/28" vtnet3 "${aprefix}.66/28"
+    tap_create server tap19309 "${aprefix}.67/28" vtnet3 "${aprefix}.68/28"
     bridge_create bridge6555 tap19304 tap19305
     bridge_create bridge6556 tap19306 tap19307
     bridge_create bridge6557 tap19308 tap19309
@@ -55,9 +57,9 @@ pass log (all to pflog0) on { vtnet1 vtnet2 }"
     # Enable forwarding.
     atf_check -o ignore $(ssh_cmd server) "sysctl net.inet.ip.forwarding=1"
     # Warm up connections, so that network discovery is complete.
-    atf_check -o ignore $(ssh_cmd client) "ping -c3 10.135.213.36"
-    atf_check -o ignore $(ssh_cmd client) "ping -c3 10.135.213.52"
-    atf_check -o ignore $(ssh_cmd client) "ping -c3 10.135.213.68"
+    atf_check -o ignore $(ssh_cmd client) "ping -c3 ${aprefix}.36"
+    atf_check -o ignore $(ssh_cmd client) "ping -c3 ${aprefix}.52"
+    atf_check -o ignore $(ssh_cmd client) "ping -c3 ${aprefix}.68"
     # Upload test to VM.
     upload_file client "scrub_forward.py" "test.py"
     upload_file client "util.py"
@@ -71,12 +73,12 @@ LOCAL_MAC_1='${client_ether1}'
 LOCAL_MAC_2='${client_ether2}'
 REMOTE_MAC_1='${server_ether1}'
 REMOTE_MAC_2='${server_ether2}'
-LOCAL_ADDR_1='10.135.213.34'
-LOCAL_ADDR_2='10.135.213.50'
-LOCAL_ADDR_3='10.135.213.66'
-REMOTE_ADDR_1='10.135.213.36'
-REMOTE_ADDR_2='10.135.213.52'
-REMOTE_ADDR_3='10.135.213.68'
+LOCAL_ADDR_1='${aprefix}.34'
+LOCAL_ADDR_2='${aprefix}.50'
+LOCAL_ADDR_3='${aprefix}.66'
+REMOTE_ADDR_1='${aprefix}.36'
+REMOTE_ADDR_2='${aprefix}.52'
+REMOTE_ADDR_3='${aprefix}.68'
 LOCAL_IF_1='vtnet1'
 LOCAL_IF_2='vtnet2'
 LOCAL_IF_3='vtnet3'" | \
