@@ -97,9 +97,8 @@ image file malformed?"
 				error "Cannot edit loader.conf on image file!"
 				return 1
 		}
-		chroot "${mountdir}" \
-			env ASSUME_ALWAYS_YES="yes" \
-				pkg install ${packages} || {
+		env ASSUME_ALWAYS_YES="yes" \
+				pkg -r "${mountdir}" install ${packages} || {
 			error "Cannot install packages into image file, \
 is there an active internet connection?"
 			return 1
