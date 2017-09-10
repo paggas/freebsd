@@ -32,14 +32,22 @@ pass log (all to pflog0) on { vtnet1 vtnet2 }"
 	# Load host modules.
 	atf_check kldload -n nmdm
 	# Set up networking.
-	tap_create client tap19302 "${aprefix}.1/28" vtnet0 "${aprefix}.2/28"
-	tap_create server tap19303 "${aprefix}.17/28" vtnet0 "${aprefix}.18/28"
-	tap_create client tap19304 "${aprefix}.33/28" vtnet1 "${aprefix}.34/28"
-	tap_create server tap19305 "${aprefix}.35/28" vtnet1 "${aprefix}.36/28"
-	tap_create client tap19306 "${aprefix}.49/28" vtnet2 "${aprefix}.50/28"
-	tap_create server tap19307 "${aprefix}.51/28" vtnet2 "${aprefix}.52/28"
-	tap_create client tap19308 "${aprefix}.65/28" vtnet3 "${aprefix}.66/28"
-	tap_create server tap19309 "${aprefix}.67/28" vtnet3 "${aprefix}.68/28"
+	tap_create client tap19302 "${aprefix}.1/28" \
+			vtnet0 "${aprefix}.2/28"
+	tap_create server tap19303 "${aprefix}.17/28" \
+			vtnet0 "${aprefix}.18/28"
+	tap_create client tap19304 "${aprefix}.33/28" \
+			vtnet1 "${aprefix}.34/28"
+	tap_create server tap19305 "${aprefix}.35/28" \
+			vtnet1 "${aprefix}.36/28"
+	tap_create client tap19306 "${aprefix}.49/28" \
+			vtnet2 "${aprefix}.50/28"
+	tap_create server tap19307 "${aprefix}.51/28" \
+			vtnet2 "${aprefix}.52/28"
+	tap_create client tap19308 "${aprefix}.65/28" \
+			vtnet3 "${aprefix}.66/28"
+	tap_create server tap19309 "${aprefix}.67/28" \
+			vtnet3 "${aprefix}.68/28"
 	bridge_create bridge6555 tap19304 tap19305
 	bridge_create bridge6556 tap19306 tap19307
 	bridge_create bridge6557 tap19308 tap19309
@@ -49,10 +57,8 @@ pass log (all to pflog0) on { vtnet1 vtnet2 }"
 	# Wait for VMs to start up and for their SSH deamons to start
 	# listening.
 	atf_check sleep 120
-	# Debug
-	#atf_check sleep 900
 	# Start pf.
-	atf_check $(ssh_cmd server) "kldload -n pf"
+	atf_check $(ssh_cmd server) "kldload -n pf pflog"
 	echo "${rules}" | atf_check -e ignore $(ssh_cmd server) "pfctl -ef -"
 	# Enable forwarding.
 	atf_check -o ignore $(ssh_cmd server) "sysctl net.inet.ip.forwarding=1"
@@ -84,8 +90,39 @@ LOCAL_IF_2='vtnet2'
 LOCAL_IF_3='vtnet3'" | \
 			$(ssh_cmd client) "cat > /root/conf.py"
 	) || atf_fail "Could not upload conf.py to VM."
+	# Debug.
+	#atf_check sleep 900
 	# Run test.
-	atf_check -o ignore $(ssh_cmd client) "cd /root && ${PYTHON2} test.py"
+	# Run tcpdump for 15 seconds.
+	atf_check daemon -p tcpdump.pid $(ssh_cmd server) \
+		"cd /root && tcpdump -G 15 -W 1 -i pflog0 -w pflog.pcap"
+	atf_check sleep 2
+	# Alt 1: Generate traffic with scapy.
+	# BEGIN
+	# atf_check -o ignore $(ssh_cmd client) \
+	# 	"cd /root && ${PYTHON2} test.py sendonly"
+	# END
+	# Alt 2: Generate traffic with ping.
+	# BEGIN
+	# Run ping with a packet size of 6000, which will cause
+	# fragmentation.  By capturing on pflog0, packets to vtnet1 will
+	# show up as unfragmented, while packets to vtnet2 will show up as
+	# fragmented.  This will later be tested using scrub_forward.py.
+	atf_check -o ignore $(ssh_cmd client) \
+		"ping -c3 -s6000 ${aprefix}.36"
+	atf_check -o ignore $(ssh_cmd client) \
+		"ping -c3 -s6000 ${aprefix}.52"
+	# END
+	# Wait for tcpdump to finish.
+	atf_check sleep 15
+	# Some extra time, to make sure tcpdump exits cleanly.
+	atf_check sleep 3
+	$(ssh_cmd server) "cat /root/pflog.pcap" > "pflog.pcap" ||
+		atf_fail "Could not download pflog.pcap from server VM."
+	$(ssh_cmd client) "cat > /root/pflog.pcap" < "pflog.pcap" ||
+		atf_fail "Could not upload pflog.pcap to client VM."
+	atf_check -o ignore $(ssh_cmd client) \
+		"cd /root && ${PYTHON2} test.py testresult2"
 }
 scrub_forward_cleanup ()
 {

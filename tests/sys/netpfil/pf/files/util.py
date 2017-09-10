@@ -136,3 +136,7 @@ class Defragmenter6(object):
                              src=p.src, dst=p.dst)
             payload = str(pfrag.payload)
             return (header / payload, self.stats[key])
+
+def isfrag(p):
+    '''Checks if IPv4 packet p is a fragment.'''
+    return ((p.flags & 1) or p.frag)
