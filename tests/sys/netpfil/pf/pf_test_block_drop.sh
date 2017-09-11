@@ -10,6 +10,8 @@
 
 . "$(atf_get_srcdir)/files/pf_test_util.sh"
 
+aprefix="10.135.213"
+
 atf_init_test_cases ()
 {
 	atf_add_test_case "block_drop"
@@ -29,10 +31,10 @@ block_drop_body ()
 	# Load host modules.
 	atf_check kldload -n nmdm
 	# Set up networking.
-	tap_create client tap19302 10.135.213.1/28 vtnet0 10.135.213.2/28
-	tap_create client tap19303 10.135.213.33/28 vtnet1 10.135.213.35/28
-	tap_create server tap19304 10.135.213.17/28 vtnet0 10.135.213.18/28
-	tap_create server tap19305 10.135.213.34/28 vtnet1 10.135.213.36/28
+	tap_create client tap19302 "${aprefix}.1/28" vtnet0 "${aprefix}.2/28"
+	tap_create client tap19303 "${aprefix}.33/28" vtnet1 "${aprefix}.35/28"
+	tap_create server tap19304 "${aprefix}.17/28" vtnet0 "${aprefix}.18/28"
+	tap_create server tap19305 "${aprefix}.34/28" vtnet1 "${aprefix}.36/28"
 	bridge_create bridge6555 tap19303 tap19305
 	# Start VMs.
 	vm_create client tap19302 tap19303
@@ -50,7 +52,7 @@ block_drop_body ()
 		"nc -l ${block_port}"
 	atf_check daemon -p nc.pass.pid $(ssh_cmd server) \
 		"nc -l ${pass_port}"
-	remote_addr_1="10.135.213.36"
+	remote_addr_1="${aprefix}.36"
 	atf_check -s exit:1 -e empty $(ssh_cmd client) \
 		"nc -z -w 4 ${remote_addr_1} ${block_port}"
 	atf_check -s exit:0 -e ignore $(ssh_cmd client) \

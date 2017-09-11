@@ -11,6 +11,9 @@
 
 . "$(atf_get_srcdir)/files/pf_test_util.sh"
 
+aprefix="10.135.213"
+apref6="fd22:27ca:58fe"
+
 atf_init_test_cases ()
 {
 	atf_add_test_case "scrub6"
@@ -31,24 +34,24 @@ pass log (all to pflog0) on { vtnet1 vtnet2 }"
 	atf_check kldload -n nmdm
 	# Set up networking.
 	# Need at least one IPv4 interface per VM for SSH autoconf.
-	tap_create client tap19302 10.135.213.1/28 vtnet0 10.135.213.2/28
-	tap_create server tap19303 10.135.213.17/28 vtnet0 10.135.213.18/28
-	# tap6_create client tap19302 fd22:27ca:58fe::/64 \
-	#     vtnet0 fd22:27ca:58fe::1/64
-	# tap6_create server tap19303 fd22:27ca:58fe:1::/64 \
-	#     vtnet0 fd22:27ca:58fe:1::1/64
-	tap6_create client tap19304 fd22:27ca:58fe:2::/64 \
-		vtnet1 fd22:27ca:58fe:2::1/64
-	tap6_create server tap19305 fd22:27ca:58fe:2::2/64 \
-		vtnet1 fd22:27ca:58fe:2::3/64
-	tap6_create client tap19306 fd22:27ca:58fe:3::/64 \
-		vtnet2 fd22:27ca:58fe:3::1/64
-	tap6_create server tap19307 fd22:27ca:58fe:3::2/64 \
-		vtnet2 fd22:27ca:58fe:3::3/64
-	tap6_create client tap19308 fd22:27ca:58fe:4::/64 \
-		vtnet3 fd22:27ca:58fe:4::1/64
-	tap6_create server tap19309 fd22:27ca:58fe:4::2/64 \
-		vtnet3 fd22:27ca:58fe:4::3/64
+	tap_create client tap19302 "${aprefix}.1/28" vtnet0 "${aprefix}.2/28"
+	tap_create server tap19303 "${aprefix}.17/28" vtnet0 "${aprefix}.18/28"
+	# tap6_create client tap19302 "${apref6}::/64" \
+	#     vtnet0 "${apref6}::1/64"
+	# tap6_create server tap19303 "${apref6}:1::/64" \
+	#     vtnet0 "${apref6}:1::1/64"
+	tap6_create client tap19304 "${apref6}:2::/64" \
+		vtnet1 "${apref6}:2::1/64"
+	tap6_create server tap19305 "${apref6}:2::2/64" \
+		vtnet1 "${apref6}:2::3/64"
+	tap6_create client tap19306 "${apref6}:3::/64" \
+		vtnet2 "${apref6}:3::1/64"
+	tap6_create server tap19307 "${apref6}:3::2/64" \
+		vtnet2 "${apref6}:3::3/64"
+	tap6_create client tap19308 "${apref6}:4::/64" \
+		vtnet3 "${apref6}:4::1/64"
+	tap6_create server tap19309 "${apref6}:4::2/64" \
+		vtnet3 "${apref6}:4::3/64"
 	bridge_create bridge6555 tap19304 tap19305
 	bridge_create bridge6556 tap19306 tap19307
 	bridge_create bridge6557 tap19308 tap19309
@@ -67,9 +70,9 @@ pass log (all to pflog0) on { vtnet1 vtnet2 }"
 	atf_check -o ignore $(ssh_cmd server) \
 		"sysctl net.inet6.ip6.forwarding=1"
 	# Warm up connections, so that network discovery is complete.
-	atf_check -o ignore $(ssh_cmd client) "ping6 -c3 fd22:27ca:58fe:2::3"
-	atf_check -o ignore $(ssh_cmd client) "ping6 -c3 fd22:27ca:58fe:3::3"
-	atf_check -o ignore $(ssh_cmd client) "ping6 -c3 fd22:27ca:58fe:4::3"
+	atf_check -o ignore $(ssh_cmd client) "ping6 -c3 ${apref6}:2::3"
+	atf_check -o ignore $(ssh_cmd client) "ping6 -c3 ${apref6}:3::3"
+	atf_check -o ignore $(ssh_cmd client) "ping6 -c3 ${apref6}:4::3"
 	# Upload test to VM.
 	upload_file client "scrub6.py" "test.py"
 	upload_file client "util.py"
@@ -83,12 +86,12 @@ LOCAL_MAC_1='${client_ether1}'
 LOCAL_MAC_2='${client_ether2}'
 REMOTE_MAC_1='${server_ether1}'
 REMOTE_MAC_2='${server_ether2}'
-LOCAL_ADDR6_1='fd22:27ca:58fe:2::1'
-LOCAL_ADDR6_2='fd22:27ca:58fe:3::1'
-LOCAL_ADDR6_3='fd22:27ca:58fe:4::1'
-REMOTE_ADDR6_1='fd22:27ca:58fe:2::3'
-REMOTE_ADDR6_2='fd22:27ca:58fe:3::3'
-REMOTE_ADDR6_3='fd22:27ca:58fe:4::3'
+LOCAL_ADDR6_1='${apref6}:2::1'
+LOCAL_ADDR6_2='${apref6}:3::1'
+LOCAL_ADDR6_3='${apref6}:4::1'
+REMOTE_ADDR6_1='${apref6}:2::3'
+REMOTE_ADDR6_2='${apref6}:3::3'
+REMOTE_ADDR6_3='${apref6}:4::3'
 LOCAL_IF_1='vtnet1'
 LOCAL_IF_2='vtnet2'
 LOCAL_IF_3='vtnet3'" | \
@@ -111,9 +114,9 @@ LOCAL_IF_3='vtnet3'" | \
 	# show up as unfragmented, while packets to vtnet2 will show up as
 	# fragmented.  This will later be tested using scrub6.py.
 	atf_check -o ignore $(ssh_cmd client) \
-		"ping6 -c3 -s6000 fd22:27ca:58fe:2::3"
+		"ping6 -c3 -s6000 ${apref6}:2::3"
 	atf_check -o ignore $(ssh_cmd client) \
-		"ping6 -c3 -s6000 fd22:27ca:58fe:3::3"
+		"ping6 -c3 -s6000 ${apref6}:3::3"
 	# END
 	# Wait for tcpdump to finish.
 	atf_check sleep 15
