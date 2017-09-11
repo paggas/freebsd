@@ -7,7 +7,7 @@ BINDIR=		${TESTSDIR}
 
 ATF_TESTS_SH=	pf_test_block_drop \
 		pf_test_block_return \
-		pf_test_scrub_forward \
+		pf_test_scrub \
 		pf_test_scrub6
 
 ${PACKAGE}FILES+=	README

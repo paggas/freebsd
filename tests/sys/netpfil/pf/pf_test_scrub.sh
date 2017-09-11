@@ -15,17 +15,17 @@ aprefix="10.135.213"
 
 atf_init_test_cases ()
 {
-	atf_add_test_case "scrub_forward"
+	atf_add_test_case "scrub"
 }
 
-atf_test_case "scrub_forward" cleanup
-scrub_forward_head ()
+atf_test_case "scrub" cleanup
+scrub_head ()
 {
-	atf_set descr 'Scrub defrag with forward on one \
+	atf_set descr 'Scrub defrag on one \
 of two interfaces and test difference.'
 	atf_set "require.user" "root"
 }
-scrub_forward_body ()
+scrub_body ()
 {
 	rules="scrub in on vtnet1 all fragment reassemble
 pass log (all to pflog0) on { vtnet1 vtnet2 }"
@@ -67,7 +67,7 @@ pass log (all to pflog0) on { vtnet1 vtnet2 }"
 	atf_check -o ignore $(ssh_cmd client) "ping -c3 ${aprefix}.52"
 	atf_check -o ignore $(ssh_cmd client) "ping -c3 ${aprefix}.68"
 	# Upload test to VM.
-	upload_file client "scrub_forward.py" "test.py"
+	upload_file client "scrub.py" "test.py"
 	upload_file client "util.py"
 	(
 		client_ether1="$(vm_ether client vtnet1)" || return 1
@@ -107,7 +107,7 @@ LOCAL_IF_3='vtnet3'" | \
 	# Run ping with a packet size of 6000, which will cause
 	# fragmentation.  By capturing on pflog0, packets to vtnet1 will
 	# show up as unfragmented, while packets to vtnet2 will show up as
-	# fragmented.  This will later be tested using scrub_forward.py.
+	# fragmented.  This will later be tested using scrub.py.
 	atf_check -o ignore $(ssh_cmd client) \
 		"ping -c3 -s6000 ${aprefix}.36"
 	atf_check -o ignore $(ssh_cmd client) \
@@ -124,7 +124,7 @@ LOCAL_IF_3='vtnet3'" | \
 	atf_check -o ignore $(ssh_cmd client) \
 		"cd /root && ${PYTHON2} test.py testresult2"
 }
-scrub_forward_cleanup ()
+scrub_cleanup ()
 {
 	# Stop VMs.
 	vm_destroy client
