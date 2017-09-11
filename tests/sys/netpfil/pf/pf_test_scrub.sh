@@ -1,13 +1,13 @@
 # This test starts two virtual machines, the client and the server.
-# It uses scapy to send IPv4 fragmented traffic from the client
-# machine to the server machine.  The machines are connected via three
-# interfaces.  The client sents traffic to the server via the first
-# two interfaces with the client itself as the destination, which the
-# server forwards via the third interface back to the client.  Scrub
-# is activated on the first but not the second interface on the server
-# pf.  By examining the forwarded packets as received on the client,
-# we can verify that reassembly occurs on one but not the other
-# interface.
+# It uses ping to send IPv4 fragmented echo requests traffic from the
+# client machine to the server machine.  The machines are connected
+# via three interfaces, of which two are used.  The client sents
+# traffic to the server via the first two interfaces.  Scrub is
+# activated on the first but not the second interface on the server
+# pf.  Tcpdump is run on pflog on the server, capturing traffic in a
+# pcap file, which is copied back to the client for examination.  By
+# examining the captured packets, we can verify that reassembly occurs
+# on one but not the other interface.
 
 . "$(atf_get_srcdir)/files/pf_test_util.sh"
 
