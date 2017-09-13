@@ -27,22 +27,18 @@ test_body ()
 	# Load host modules.
 	atf_check kldload -n nmdm
 	# Set up networking.
-	tap_create_auto client tapA "${aprefix}.1/28" \
+	tap_auto client tapA "${aprefix}.1/28" \
 				vtnet0 "${aprefix}.2/28"
-	tap_create_auto client tapB "${aprefix}.33/28" \
+	tap_auto client tapB "${aprefix}.33/28" \
 				vtnet1 "${aprefix}.35/28"
-	tap_create_auto server tapC "${aprefix}.17/28" \
+	tap_auto server tapC "${aprefix}.17/28" \
 				vtnet0 "${aprefix}.18/28"
-	tap_create_auto server tapD "${aprefix}.34/28" \
+	tap_auto server tapD "${aprefix}.34/28" \
 				vtnet1 "${aprefix}.36/28"
-	tapA="$(iface_from_label tapA)"
-	tapB="$(iface_from_label tapB)"
-	tapC="$(iface_from_label tapC)"
-	tapD="$(iface_from_label tapD)"
-	bridge_create_auto bridgeA "${tapB}" "${tapD}"
+	bridge_auto bridgeA tapB tapD
 	# Start VMs.
-	vm_create client "${tapA}" "${tapB}"
-	vm_create server "${tapC}" "${tapD}"
+	vm_create client tapA tapB
+	vm_create server tapC tapD
 	# Debug
 	#atf_check sleep 900
 	# Wait for VMs to start up and for their SSH deamons to start

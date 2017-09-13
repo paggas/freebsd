@@ -70,9 +70,9 @@ tap_create ()
 		"vmctl.${vm}.rcappend"
 }
 
-# tap_create_auto - same as tap_create but allocate tap interface
-#                   automatically.  Also print new interface name.
-tap_create_auto ()
+# tap_auto - same as tap_create but allocate tap interface
+#            automatically.  Also print new interface name.
+tap_auto ()
 {
 	vm="${1}"
 	tap_label="${2}"
@@ -103,9 +103,9 @@ tap6_create ()
 	} >> "vmctl.${vm}.rcappend"
 }
 
-# tap6_create_auto - same as tap6_create but allocate tap interface
-#                    automatically.  Also print new interface name.
-tap6_create_auto ()
+# tap6_auto - same as tap6_create but allocate tap interface
+#             automatically.  Also print new interface name.
+tap6_auto ()
 {
 	vm="${1}"
 	tap_label="${2}"
@@ -136,20 +136,21 @@ bridge_create ()
 	atf_check ifconfig "${iface}" up
 }
 
-# bridge_create_auto - same as bridge_create but allocate bridge interface
-#                      automatically.  Also print new interface name.
-bridge_create_auto ()
+# bridge_auto - same as bridge_create but allocate bridge interface
+#               automatically.  Also print new interface name.
+bridge_auto ()
 {
-	iface_label="${1}"
+	bridge_label="${1}"
 	shift 1 || atf_fail "bridge_create(): No bridge interface specified."
-	iface="$(ifconfig bridge create)"
+	bridge="$(ifconfig bridge create)"
 	for i in "$@" ; do
-		atf_check ifconfig "${iface}" addm "${i}"
-		atf_check ifconfig "${iface}" stp "${i}"
+		iface="$(iface_from_label ${i})"
+		atf_check ifconfig "${bridge}" addm "${iface}"
+		atf_check ifconfig "${bridge}" stp "${iface}"
 	done
-	atf_check ifconfig "${iface}" up
-	echo "${iface}" >> pf_test_util.interfaces
-	echo "${iface}" > "pf_test_util.label.${iface_label}"
+	atf_check ifconfig "${bridge}" up
+	echo "${bridge}" >> pf_test_util.interfaces
+	echo "${bridge}" > "pf_test_util.label.${bridge_label}"
 }
 
 # iface_from_label - get interface name from label
@@ -161,7 +162,7 @@ iface_from_label ()
 	cat "pf_test_util.label.${1}"
 }
 
-# iface_destroy_all - destroy all interfaces created by *_create_auto
+# iface_destroy_all - destroy all interfaces created by *_auto
 #                     functions.
 iface_destroy_all ()
 {
@@ -176,12 +177,17 @@ vm_create ()
 {
 	vm="${1}"
 	shift 1 || atf_fail "vm_create(): No VM specified."
-	# Rest of arguments is network (tap) interfaces.
+	# Rest of arguments is network (tap) interface labels.
 	#echo "==== BEGIN ${vm} ====" >&2
 	#cat "vmctl.${vm}.rcappend" >&2
 	#echo "==== END ${vm} ====" >&2
+	ifaces=""
+	for i in "$@" ; do
+		iface="$(iface_from_label ${i})"
+		ifaces="${ifaces} ${iface}"
+	done
 	vmctl.sh create "${vm}" "zroot/tests/pf" \
-			"/dev/nmdmtests-pf-${vm}B" "$@"
+			"/dev/nmdmtests-pf-${vm}B" ${ifaces}
 	case "$?" in
 		(0) ;;
 		(2) atf_fail "VM did not start, bhyve support lacking?" ;;
