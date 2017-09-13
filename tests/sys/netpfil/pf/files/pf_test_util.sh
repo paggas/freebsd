@@ -103,6 +103,25 @@ tap6_create ()
 	} >> "vmctl.${vm}.rcappend"
 }
 
+# tap6_create_auto - same as tap6_create but allocate tap interface
+#                    automatically.  Also print new interface name.
+tap6_create_auto ()
+{
+	vm="${1}"
+	tap_label="${2}"
+	tap_inet6="${3}"
+	vtnet="${4}"
+	vtnet_inet6="${5}"
+	tap="$(ifconfig tap create)"
+	atf_check ifconfig "${tap}" inet6 "${tap_inet6}" link0
+	{
+		echo "ifconfig_${vtnet}=\"inet 0.0.0.0/8\""
+		echo "ifconfig_${vtnet}_ipv6=\"inet6 ${vtnet_inet6}\""
+	} >> "vmctl.${vm}.rcappend"
+	echo "${tap}" >> pf_test_util.interfaces
+	echo "${tap}" > "pf_test_util.label.${tap_label}"
+}
+
 # bridge_create - create bridge interface for communication between
 #                 virtual machines.
 bridge_create ()

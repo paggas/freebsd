@@ -34,30 +34,34 @@ pass log (all to pflog0) on { vtnet1 vtnet2 }"
 	atf_check kldload -n nmdm
 	# Set up networking.
 	# Need at least one IPv4 interface per VM for SSH autoconf.
-	tap_create client tap19302 "${aprefix}.1/28" vtnet0 "${aprefix}.2/28"
-	tap_create server tap19303 "${aprefix}.17/28" vtnet0 "${aprefix}.18/28"
-	# tap6_create client tap19302 "${apref6}::/64" \
-	#     vtnet0 "${apref6}::1/64"
-	# tap6_create server tap19303 "${apref6}:1::/64" \
-	#     vtnet0 "${apref6}:1::1/64"
-	tap6_create client tap19304 "${apref6}:2::/64" \
+	tap_create_auto client tapA "${aprefix}.1/28" vtnet0 "${aprefix}.2/28"
+	tap_create_auto server tapB "${aprefix}.17/28" vtnet0 "${aprefix}.18/28"
+	tap6_create_auto client tapC "${apref6}:2::/64" \
 		vtnet1 "${apref6}:2::1/64"
-	tap6_create server tap19305 "${apref6}:2::2/64" \
+	tap6_create_auto server tapD "${apref6}:2::2/64" \
 		vtnet1 "${apref6}:2::3/64"
-	tap6_create client tap19306 "${apref6}:3::/64" \
+	tap6_create_auto client tapE "${apref6}:3::/64" \
 		vtnet2 "${apref6}:3::1/64"
-	tap6_create server tap19307 "${apref6}:3::2/64" \
+	tap6_create_auto server tapF "${apref6}:3::2/64" \
 		vtnet2 "${apref6}:3::3/64"
-	tap6_create client tap19308 "${apref6}:4::/64" \
+	tap6_create_auto client tapG "${apref6}:4::/64" \
 		vtnet3 "${apref6}:4::1/64"
-	tap6_create server tap19309 "${apref6}:4::2/64" \
+	tap6_create_auto server tapH "${apref6}:4::2/64" \
 		vtnet3 "${apref6}:4::3/64"
-	bridge_create bridge6555 tap19304 tap19305
-	bridge_create bridge6556 tap19306 tap19307
-	bridge_create bridge6557 tap19308 tap19309
+	tapA="$(iface_from_label tapA)"
+	tapB="$(iface_from_label tapB)"
+	tapC="$(iface_from_label tapC)"
+	tapD="$(iface_from_label tapD)"
+	tapE="$(iface_from_label tapE)"
+	tapF="$(iface_from_label tapF)"
+	tapG="$(iface_from_label tapG)"
+	tapH="$(iface_from_label tapH)"
+	bridge_create_auto bridgeA "${tapC}" "${tapD}"
+	bridge_create_auto bridgeB "${tapE}" "${tapF}"
+	bridge_create_auto bridgeC "${tapG}" "${tapH}"
 	# Start VMs.
-	vm_create client tap19302 tap19304 tap19306 tap19308
-	vm_create server tap19303 tap19305 tap19307 tap19309
+	vm_create client "${tapA}" "${tapC}" "${tapE}" "${tapG}"
+	vm_create server "${tapB}" "${tapD}" "${tapF}" "${tapH}"
 	# Wait for VMs to start up and for their SSH deamons to start
 	# listening.
 	atf_check sleep 120
@@ -135,15 +139,5 @@ scrub6_cleanup ()
 	vm_destroy client
 	vm_destroy server
 	# Tear down networking.
-	ifconfig bridge6555 destroy
-	ifconfig bridge6556 destroy
-	ifconfig bridge6557 destroy
-	ifconfig tap19302 destroy
-	ifconfig tap19303 destroy
-	ifconfig tap19304 destroy
-	ifconfig tap19305 destroy
-	ifconfig tap19306 destroy
-	ifconfig tap19307 destroy
-	ifconfig tap19308 destroy
-	ifconfig tap19309 destroy
+	iface_destroy_all
 }
