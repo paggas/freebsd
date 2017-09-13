@@ -14,16 +14,16 @@ aprefix="10.135.213"
 
 atf_init_test_cases ()
 {
-	atf_add_test_case "block_drop"
+	atf_add_test_case "test"
 }
 
-atf_test_case "block_drop" cleanup
-block_drop_head ()
+atf_test_case "test" cleanup
+test_head ()
 {
 	atf_set descr 'Block-with-drop a port and test that it is blocked.'
 	atf_set "require.user" "root"
 }
-block_drop_body ()
+test_body ()
 {
 	block_port="50000"
 	pass_port="50001"
@@ -66,7 +66,7 @@ block_drop_body ()
 	atf_check -s exit:0 -e ignore $(ssh_cmd client) \
 		"nc -z ${remote_addr_1} ${pass_port}"
 }
-block_drop_cleanup ()
+test_cleanup ()
 {
 	# Stop test.
 	[ -e nc.block.pid ] && kill "$(cat nc.block.pid)"

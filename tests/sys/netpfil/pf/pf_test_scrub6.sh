@@ -16,17 +16,17 @@ apref6="fd22:27ca:58fe"
 
 atf_init_test_cases ()
 {
-	atf_add_test_case "scrub6"
+	atf_add_test_case "test"
 }
 
-atf_test_case "scrub6" cleanup
-scrub_forward6_head ()
+atf_test_case "test" cleanup
+test_head ()
 {
 	atf_set descr 'Scrub defrag on one \
 of two interfaces and test difference, IPv6 version.'
 	atf_set "require.user" "root"
 }
-scrub6_body ()
+test_body ()
 {
 	rules="scrub in on vtnet1 all fragment reassemble
 pass log (all to pflog0) on { vtnet1 vtnet2 }"
@@ -133,7 +133,7 @@ LOCAL_IF_3='vtnet3'" | \
 	atf_check -o ignore $(ssh_cmd client) \
 		"cd /root && ${PYTHON2} test.py testresult2"
 }
-scrub6_cleanup ()
+test_cleanup ()
 {
 	# Stop VMs.
 	vm_destroy client
