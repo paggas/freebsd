@@ -70,6 +70,23 @@ tap_create ()
 		"vmctl.${vm}.rcappend"
 }
 
+# tap_create_auto - same as tap_create but allocate tap interface
+#                   automatically.  Also print new interface name.
+tap_create_auto ()
+{
+	vm="${1}"
+	tap_label="${2}"
+	tap_inet="${3}"
+	vtnet="${4}"
+	vtnet_inet="${5}"
+	tap="$(ifconfig tap create)"
+	atf_check ifconfig "${tap}" inet "${tap_inet}" link0
+	echo "ifconfig_${vtnet}=\"inet ${vtnet_inet}\"" >> \
+		"vmctl.${vm}.rcappend"
+	echo "${tap}" >> pf_test_util.interfaces
+	echo "${tap}" > "pf_test_util.label.${tap_label}"
+}
+
 # tap6_create - configure tap interface on host machine with matching
 #               vtnet interface on virtual machine, IPv6 version.
 tap6_create ()
@@ -98,6 +115,41 @@ bridge_create ()
 		atf_check ifconfig "${iface}" stp "${i}"
 	done
 	atf_check ifconfig "${iface}" up
+}
+
+# bridge_create_auto - same as bridge_create but allocate bridge interface
+#                      automatically.  Also print new interface name.
+bridge_create_auto ()
+{
+	iface_label="${1}"
+	shift 1 || atf_fail "bridge_create(): No bridge interface specified."
+	iface="$(ifconfig bridge create)"
+	for i in "$@" ; do
+		atf_check ifconfig "${iface}" addm "${i}"
+		atf_check ifconfig "${iface}" stp "${i}"
+	done
+	atf_check ifconfig "${iface}" up
+	echo "${iface}" >> pf_test_util.interfaces
+	echo "${iface}" > "pf_test_util.label.${iface_label}"
+}
+
+# iface_from_label - get interface name from label
+iface_from_label ()
+{
+	if [ -z "${1}" ] ; then
+		atf_fail "iface_from_label(): No interface specified."
+	fi
+	cat "pf_test_util.label.${1}"
+}
+
+# iface_destroy_all - destroy all interfaces created by *_create_auto
+#                     functions.
+iface_destroy_all ()
+{
+	cat pf_test_util.interfaces |
+		while read iface ; do
+			ifconfig "${iface}" destroy
+		done
 }
 
 # vm_create - create and start a virtual machine.
