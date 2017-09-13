@@ -40,6 +40,8 @@ export PATH
 # }
 
 # ssh_cmd - print SSH command for connecting to virtual machine.
+#
+#           % $(ssh_cmd {vm}) {command ...}
 ssh_cmd ()
 {
 	vm="${1}"
@@ -58,6 +60,8 @@ ssh_cmd ()
 
 # tap_create - configure tap interface on host machine with matching
 #              vtnet interface on virtual machine.
+#
+#              % tap_create {vm} {tap} {tap_inet} {vtnet} {vtnet_inet}
 tap_create ()
 {
 	vm="${1}"
@@ -70,8 +74,11 @@ tap_create ()
 		"vmctl.${vm}.rcappend"
 }
 
-# tap_auto - same as tap_create but allocate tap interface
-#            automatically.  Also print new interface name.
+# tap_auto - configure tap interface on host machine with matching
+#            vtnet interface on virtual machine.  Allocates interface
+#            automatically.
+#
+#            % tap_auto {vm} {tap_label} {tap_inet} {vtnet} {vtnet_inet}
 tap_auto ()
 {
 	vm="${1}"
@@ -89,6 +96,8 @@ tap_auto ()
 
 # tap6_create - configure tap interface on host machine with matching
 #               vtnet interface on virtual machine, IPv6 version.
+#
+#            % tap6_create {vm} {tap} {tap_inet6} {vtnet} {vtnet_inet6}
 tap6_create ()
 {
 	vm="${1}"
@@ -103,8 +112,11 @@ tap6_create ()
 	} >> "vmctl.${vm}.rcappend"
 }
 
-# tap6_auto - same as tap6_create but allocate tap interface
-#             automatically.  Also print new interface name.
+# tap6_auto - configure tap interface on host machine with matching
+#             vtnet interface on virtual machine.  Allocates interface
+#             automatically.  IPv6 version.
+#
+#             % tap6_auto {vm} {tap_label} {tap_inet6} {vtnet} {vtnet_inet6}
 tap6_auto ()
 {
 	vm="${1}"
@@ -124,6 +136,8 @@ tap6_auto ()
 
 # bridge_create - create bridge interface for communication between
 #                 virtual machines.
+#
+#                 % bridge_create {bridge} {iface ...}
 bridge_create ()
 {
 	iface="${1}"
@@ -136,8 +150,11 @@ bridge_create ()
 	atf_check ifconfig "${iface}" up
 }
 
-# bridge_auto - same as bridge_create but allocate bridge interface
-#               automatically.  Also print new interface name.
+# bridge_auto - create bridge interface for communication between
+#               virtual machines.  Allocates interface
+#               automatically.
+#
+#               % bridge_auto {bridge_label} {iface ...}
 bridge_auto ()
 {
 	bridge_label="${1}"
@@ -153,7 +170,9 @@ bridge_auto ()
 	echo "${bridge}" > "pf_test_util.label.${bridge_label}"
 }
 
-# iface_from_label - get interface name from label
+# iface_from_label - get interface name from label.
+#
+#                    % iface="$(iface_from_label {iface_label})"
 iface_from_label ()
 {
 	if [ -z "${1}" ] ; then
@@ -164,6 +183,8 @@ iface_from_label ()
 
 # iface_destroy_all - destroy all interfaces created by *_auto
 #                     functions.
+#
+#                     % iface_destroy_all
 iface_destroy_all ()
 {
 	cat pf_test_util.interfaces |
@@ -173,6 +194,8 @@ iface_destroy_all ()
 }
 
 # vm_create - create and start a virtual machine.
+#
+#             % vm_create {vm} {iface_label ...}
 vm_create ()
 {
 	vm="${1}"
@@ -200,6 +223,8 @@ vm_create ()
 }
 
 # vm_destroy - stop and erase a virtual machine.
+#
+#              % vm_destroy {vm}
 vm_destroy ()
 {
 	vm="${1}"
@@ -207,6 +232,8 @@ vm_destroy ()
 }
 
 # vm_ether - get Ethernet address of interface of virtual machine.
+#
+#            % ether="$(vm_ether {vm} {iface})"
 vm_ether ()
 {
 	vm="${1}"
@@ -219,7 +246,10 @@ vm_ether ()
 		grep -i 'ether' | grep -io "${ether_pattern}"
 }
 
-# upload_file - Upload file to virtual machine.
+# upload_file - Upload file to virtual machine.  Searches for file in
+#               the files directory in the test directory.
+#
+#               % upload_file {vm} {file} [{new_name}]
 upload_file ()
 {
 	vm="${1}"
