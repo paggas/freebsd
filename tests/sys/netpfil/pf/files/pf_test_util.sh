@@ -39,6 +39,14 @@ export PATH
 # -i vmctl.${vm}.id_rsa ${sshlogin}"
 # }
 
+# init_test - run common commands to initialize test.
+#
+#             % init_test
+init_test ()
+{
+	atf_check kldload -n nmdm
+}
+
 # ssh_cmd - print SSH command for connecting to virtual machine.
 #
 #           % $(ssh_cmd {vm}) {command ...}

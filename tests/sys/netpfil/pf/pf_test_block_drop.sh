@@ -28,8 +28,8 @@ test_body ()
 	block_port="50000"
 	pass_port="50001"
 	rules="block drop in on vtnet1 proto tcp to port ${block_port}"
-	# Load host modules.
-	atf_check kldload -n nmdm
+	# Initialize test.
+	init_test
 	# Set up networking.
 	tap_auto client tapA "${aprefix}.1/28" \
 				vtnet0 "${aprefix}.2/28"

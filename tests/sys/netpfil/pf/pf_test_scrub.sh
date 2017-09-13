@@ -29,8 +29,8 @@ test_body ()
 {
 	rules="scrub in on vtnet1 all fragment reassemble
 pass log (all to pflog0) on { vtnet1 vtnet2 }"
-	# Load host modules.
-	atf_check kldload -n nmdm
+	# Initialize test.
+	init_test
 	# Set up networking.
 	tap_auto client tapA "${aprefix}.1/28" \
 			vtnet0 "${aprefix}.2/28"
